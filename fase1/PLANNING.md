@@ -8,8 +8,10 @@ y la IA (Gemini) devuelve una comparativa visual de ubicaciones recomendadas den
 
 ## Estructura de carpetas
 
+El código fuente vive en la **raíz del repositorio**. `fase1/` contiene únicamente archivos de planificación.
+
 ```
-fase1/
+/ (raíz del repositorio)
 ├── app.py                  # Punto de entrada Streamlit (Dev A)
 ├── ui/
 │   └── components.py       # Componentes visuales reutilizables (Dev A)
@@ -19,10 +21,11 @@ fase1/
 ├── core/
 │   └── models.py           # Dataclasses / modelos de datos del JSON (Dev C)
 │   └── parser.py           # Parseo y validación del JSON de respuesta (Dev C)
-├── PLANNING.md             # Este archivo
-├── AI_INSTRUCTIONS.md      # Instrucciones para el agente de IA
 ├── requirements.txt        # Dependencias del proyecto
-└── .env.example            # Variables de entorno necesarias
+├── .env.example            # Variables de entorno necesarias
+└── fase1/
+    ├── PLANNING.md         # Este archivo
+    └── AI_INSTRUCTIONS.md  # Instrucciones para el agente de IA
 ```
 
 ---

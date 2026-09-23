@@ -4,7 +4,7 @@ This file provides guidance to agents when working with code in this repository.
 
 ## Stack
 
-- Python + Streamlit frontend (`fase1/app.py`)
+- Python + Streamlit frontend (`app.py` in repo root)
 - Gemini API via `google-generativeai` — model: `gemini-1.5-flash`
 - `python-dotenv` for secrets; `.env` must contain `GEMINI_API_KEY`
 - No test framework yet (hackathon project)
@@ -12,19 +12,23 @@ This file provides guidance to agents when working with code in this repository.
 ## Run
 
 ```bash
-cd fase1
 streamlit run app.py
 ```
 
-## Project layout (`fase1/`)
+## Project layout
 
 ```
-app.py                 # Streamlit entry point (Dev A)
-ui/components.py       # Visual components — consume List[Ubicacion]
-ai/gemini_client.py    # get_locations(giro, capital, ciudad) -> str (raw JSON)
-ai/prompt_builder.py   # build_prompt(giro, capital, ciudad) -> str
-core/models.py         # Criterio and Ubicacion dataclasses
-core/parser.py         # parse_response(json_str: str) -> List[Ubicacion]
+/ (repo root — all code lives here)
+├── app.py                 # Streamlit entry point (Dev A)
+├── ui/components.py       # Visual components — consume List[Ubicacion]
+├── ai/gemini_client.py    # get_locations(giro, capital, ciudad) -> str (raw JSON)
+├── ai/prompt_builder.py   # build_prompt(giro, capital, ciudad) -> str
+├── core/models.py         # Criterio and Ubicacion dataclasses
+├── core/parser.py         # parse_response(json_str: str) -> List[Ubicacion]
+├── requirements.txt
+└── fase1/                 # Planning docs only — NO code here
+    ├── PLANNING.md
+    └── AI_INSTRUCTIONS.md
 ```
 
 ## Hard contracts — do not break
@@ -51,10 +55,7 @@ core/parser.py         # parse_response(json_str: str) -> List[Ubicacion]
 ## Dependency management
 
 ```bash
-cd fase1
 pip install -r requirements.txt
 # or regenerate after adding packages:
 pip freeze > requirements.txt
 ```
-
-> Note: `requirements.txt` is in `fase1/`, not the project root.
