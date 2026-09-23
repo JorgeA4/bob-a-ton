@@ -33,7 +33,7 @@ def get_locations(giro: str, capital: float, ciudad: str) -> str:
         )
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-3.6-flash")
 
     prompt = build_prompt(giro, capital, ciudad)
 
