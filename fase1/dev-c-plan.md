@@ -38,7 +38,7 @@ Estos son el contrato de datos compartido con Dev A; deben estar listos primero.
 - Esquema JSON de referencia: `fase1/AI_INSTRUCTIONS.md` — sección "Estructura exacta del JSON"
 - Los 9 criterios son claves del dict `criterios`; no se listan como atributos individuales
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 ---
 
@@ -72,7 +72,7 @@ Es el único punto de parseo en toda la aplicación.
 - Modelos definidos en sub-tarea 1: `core/models.py`
 - Regla del AGENTS.md: `core/parser.py` es el **único** lugar donde se parsea; no puede llamar a Gemini
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 ---
 
@@ -97,7 +97,7 @@ de entorno necesarias para que los otros devs puedan arrancar el proyecto.
 - El entorno Python ya tiene instalados `streamlit`, `google-generativeai`, `python-dotenv`
 - El archivo va en `fase1/`, no en la raíz del proyecto (per AGENTS.md)
 
-**Status:** `[ ] pending`
+**Status:** `[x] done`
 
 ---
 
