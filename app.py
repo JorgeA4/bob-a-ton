@@ -1,18 +1,7 @@
 import streamlit as st
 
 from ai.gemini_client import get_locations
-
-# core.parser no existe aún (Dev C pendiente) — mock hasta que entregue
-try:
-    from core.parser import parse_response
-except ImportError:
-    def parse_response(json_str: str) -> list:
-        """Mock temporal hasta que Dev C entregue core/parser.py."""
-        import json
-        data = json.loads(json_str)
-        return data.get("ubicaciones", [])
-
-
+from core.parser import parse_response
 from ui.components import render_tabla, render_grafico, render_recomendacion
 
 st.set_page_config(page_title="Analizador de ubicaciones", page_icon="📍", layout="wide")
