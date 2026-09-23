@@ -25,7 +25,8 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 ├── .env.example            # Variables de entorno necesarias
 └── fase1/
     ├── PLANNING.md         # Este archivo
-    └── AI_INSTRUCTIONS.md  # Instrucciones para el agente de IA
+    ├── AI_INSTRUCTIONS.md  # Instrucciones para el agente de IA
+    └── dev-c-plan.md       # Plan detallado de Dev C (completado — ver resumen abajo)
 ```
 
 ---
@@ -36,17 +37,19 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 **Archivos propios:** `app.py`, `ui/components.py`
 
 **Tareas:**
-- [ ] Armar el formulario de entrada: campos `giro`, `capital` y `ciudad`
-- [ ] Agregar validaciones de formulario (campos no vacíos, capital numérico positivo)
-- [ ] Mostrar estado de carga mientras la IA procesa (`st.spinner`)
-- [ ] Consumir la función `get_locations()` del módulo `ai/` y pasar el resultado a los componentes
-- [ ] Renderizar la tabla comparativa usando `ui/components.py`
-- [ ] Renderizar el gráfico de radar/barras por ubicación
-- [ ] Mostrar la recomendación final de la IA en un bloque destacado
+- [x] Armar el formulario de entrada: campos `giro`, `capital` y `ciudad`
+- [x] Agregar validaciones de formulario (campos no vacíos, capital numérico positivo)
+- [x] Mostrar estado de carga mientras la IA procesa (`st.spinner`)
+- [x] Consumir la función `get_locations()` del módulo `ai/` y pasar el resultado a los componentes
+- [x] Renderizar la tabla comparativa usando `ui/components.py`
+- [x] Renderizar el gráfico de radar/barras por ubicación
+- [x] Mostrar la recomendación final de la IA en un bloque destacado
+- [x] Eliminar el mock de `parse_response` en `app.py` — `core/parser.py` ya existe y puede importarse directamente
 
 **Contratos que debe respetar:**
-- Llamar a `ai.gemini_client.get_locations(giro, capital, ciudad) -> List[Ubicacion]`
-- Recibir una lista de objetos `Ubicacion` definidos en `core/models.py`
+- Llamar a `ai.gemini_client.get_locations(giro, capital, ciudad) -> str`
+- Parsear el resultado con `core.parser.parse_response(raw) -> List[dict]`
+- Pasar `ubicaciones` (lista de dicts) directamente a los componentes
 
 ---
 
@@ -54,37 +57,38 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 **Archivos propios:** `ai/gemini_client.py`, `ai/prompt_builder.py`
 
 **Tareas:**
-- [ ] Configurar el cliente de Gemini con la API key desde `.env`
-- [ ] Escribir `build_prompt(giro, capital, ciudad) -> str` en `prompt_builder.py`
-- [ ] Asegurarse de que el prompt instruya a Gemini a responder **solo** con JSON válido
-- [ ] Escribir `get_locations(giro, capital, ciudad) -> str` en `gemini_client.py`
+- [x] Configurar el cliente de Gemini con la API key desde `.env`
+- [x] Escribir `build_prompt(giro, capital, ciudad) -> str` en `prompt_builder.py`
+- [x] Asegurarse de que el prompt instruya a Gemini a responder **solo** con JSON válido
+- [x] Escribir `get_locations(giro, capital, ciudad) -> str` en `gemini_client.py`
   - Llama a `build_prompt()`
   - Envía el prompt a Gemini
   - Devuelve el string JSON crudo (sin parsear)
-- [ ] Manejar errores de red y de cuota de la API con excepciones claras
+- [x] Manejar errores de red y de cuota de la API con excepciones claras
 
 **Contratos que debe respetar:**
 - `get_locations()` devuelve el JSON **como string**, el parseo lo hace Dev C
-- El modelo a usar: `gemini-1.5-flash` (gratuito y rápido)
+- El modelo a usar: `gemini-3.6-flash`
 
 ---
 
-### 👤 Dev C — Datos / Modelos
+### 👤 Dev C — Datos / Modelos ✅ completado
 **Archivos propios:** `core/models.py`, `core/parser.py`
 
 **Tareas:**
-- [ ] Definir la dataclass `Criterio` con campos: `nivel`, `puntaje`, `nota`
-- [ ] Definir la dataclass `Ubicacion` con todos los campos del JSON acordado
-- [ ] Escribir `parse_response(json_str: str) -> List[Ubicacion]` en `parser.py`
-  - Valida que el JSON tenga la estructura esperada
-  - Convierte el dict a objetos `Ubicacion`
-  - Lanza excepciones descriptivas si faltan campos clave
-- [ ] Escribir `requirements.txt` con todas las dependencias
-- [ ] Escribir `.env.example` con las variables necesarias
+- [x] Definir `@dataclass Criterio`: `nivel: str`, `puntaje: float`, `nota: str`
+- [x] Definir `@dataclass Ubicacion`: `id`, `nombre`, `descripcion_breve`, `criterios: dict`, `puntaje_total: float`, `recomendacion_ia`
+- [x] Definir `@dataclass RespuestaIA`: `ciudad`, `giro`, `capital: float`, `ubicaciones: list`
+- [x] Escribir `parse_response(json_str: str) -> RespuestaIA` en `parser.py`
+  - Valida claves raíz y por ubicación/criterio; lanza `ValueError` si faltan
+  - Coerciona `puntaje`, `puntaje_total` y `capital` a `float`
+  - Ignora claves desconocidas en cualquier nivel
+- [x] Escribir `requirements.txt` con dependencias fijadas
+- [x] Escribir `.env.example`
 
 **Contratos que debe respetar:**
-- `parse_response()` recibe el string crudo de Dev B y devuelve `List[Ubicacion]` para Dev A
-- Los nombres de campos de `Ubicacion` deben coincidir exactamente con el JSON definido en `AI_INSTRUCTIONS.md`
+- `parse_response()` devuelve `List[dict]` validados y con tipos coercionados — ni `RespuestaIA` ni `List[Ubicacion]` directamente (decisión de implementación final)
+- Los nombres de campos coinciden exactamente con el JSON definido en `AI_INSTRUCTIONS.md`
 
 ---
 
@@ -98,10 +102,10 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
     │  prompt → Gemini API → JSON string
     ▼
 [Dev C] parser.parse_response()
-    │  JSON string → List[Ubicacion]
+    │  JSON string → RespuestaIA
     ▼
 [Dev A] ui/components.py
-    │  List[Ubicacion] → tabla + gráfico + recomendación
+    │  respuesta.ubicaciones → tabla + gráfico + recomendación
     ▼
 [Dev A] Pantalla final
 ```
@@ -113,8 +117,8 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 | Punto | Quién produce | Quién consume | Formato acordado |
 |---|---|---|---|
 | Resultado de IA | Dev B (`get_locations`) | Dev C (`parse_response`) | `str` JSON crudo |
-| Datos parseados | Dev C (`parse_response`) | Dev A (`app.py`) | `List[Ubicacion]` |
-| Componentes visuales | Dev A (`components.py`) | Dev A (`app.py`) | Funciones que reciben `List[Ubicacion]` |
+| Datos parseados | Dev C (`parse_response`) | Dev A (`app.py`) | `RespuestaIA` — acceder a `.ubicaciones` para la lista |
+| Componentes visuales | Dev A (`components.py`) | Dev A (`app.py`) | Funciones que reciben `list[Ubicacion]` |
 
 **Regla:** Nadie toca los archivos del otro sin avisar. Si se necesita cambiar una firma de función, se acuerda primero.
 
