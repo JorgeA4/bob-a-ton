@@ -22,8 +22,8 @@ def get_locations(giro: str, capital: float, ciudad: str) -> str:
         EnvironmentError: Si no se encuentra la GEMINI_API_KEY en el entorno.
         RuntimeError: Si la llamada a la API falla por red, cuota u otro error.
     """
-    # Busca el .env en la raíz del proyecto (dos niveles arriba de este archivo)
-    load_dotenv(dotenv_path=Path(__file__).resolve().parents[2] / ".env")
+    # Busca el .env en la raíz del proyecto (un nivel arriba de ai/)
+    load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
