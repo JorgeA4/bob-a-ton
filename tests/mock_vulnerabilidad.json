@@ -3,45 +3,45 @@
   "riesgos_cuantificables": [
     {
       "titulo": "Sensibilidad alta al precio unitario",
-      "descripcion": "El punto de equilibrio de 737 unidades/mes equivale al 95% de las ventas diarias necesarias a $60 MXN por ticket. Una reducción del 10% en el precio promedio ($54 MXN) desplazaría el punto de equilibrio a ~820 unidades, reduciendo la utilidad neta en aproximadamente $5,600 MXN/mes.",
+      "descripcion": "El punto de equilibrio de 737 unidades/mes equivale al 95% de las ventas necesarias a $60 MXN por ticket. Una reducción del 10% en el precio promedio ($54 MXN) desplazaría el punto de equilibrio a ~820 unidades, reduciendo la utilidad neta en aproximadamente $5,600 MXN/mes.",
       "severidad": "alta",
       "mitigacion": "Establecer un portafolio de productos con margen diferenciado: café de especialidad a $80-120 MXN y colaciones a $40-60 MXN. Proteger el ticket promedio con estrategias de upselling en lugar de descuentos."
     },
     {
       "titulo": "Impacto de incremento de renta sobre viabilidad",
-      "descripcion": "La renta representa el 17.9% de los ingresos estimados ($14,000 / $78,000 MXN). Un incremento del 15% en la renta ($2,100 MXN/mes adicionales) reduciría la utilidad neta de $28,000 a $25,900 MXN, y un incremento del 50% haría el negocio marginalmente rentable con solo $14,000 MXN de utilidad.",
+      "descripcion": "La renta representa el 17.9% de los ingresos estimados ($14,000 / $78,000 MXN). Un incremento del 15% ($2,100 MXN/mes adicionales) reduciría la utilidad neta de $28,000 a $25,900 MXN, y un incremento del 50% haría el negocio marginalmente rentable con solo $14,000 MXN de utilidad.",
       "severidad": "media",
-      "mitigacion": "Negociar contrato de arrendamiento a plazo fijo de 2-3 años con cláusula de incremento máximo del 10% anual. Considerar subarrendamiento de espacio de coworking en horas de baja afluencia para generar ingreso complementario."
+      "mitigacion": "Negociar contrato de arrendamiento a plazo fijo de 2-3 años con cláusula de incremento máximo del 10% anual."
     }
   ],
   "riesgos_contextuales": [
     {
       "titulo": "Dependencia crítica del flujo laboral de la zona",
-      "descripcion": "Zona Río concentra su demanda en días hábiles y horario de oficina. La caída fuerte de tráfico en vacaciones y fines de semana identificada en el FODA puede reducir los ingresos hasta un 30-40% en periodos como Semana Santa, verano o días festivos prolongados, comprometiendo el pago de costos fijos que no se reducen.",
+      "descripcion": "Zona Río concentra su demanda en días hábiles y horario de oficina. La caída de tráfico en vacaciones y fines de semana puede reducir ingresos hasta un 30-40% en períodos como Semana Santa o verano, comprometiendo el pago de costos fijos.",
       "severidad": "alta",
       "fuente": "foda",
-      "mitigacion": "Desarrollar desde el mes 1 un segmento de catering para empresas cercanas (servicio de café de oficina) que genere ingresos recurrentes independientes del flujo peatonal. Activar convenios con al menos 3 empresas en el primer trimestre."
+      "mitigacion": "Desarrollar desde el mes 1 un segmento de catering para empresas cercanas que genere ingresos recurrentes independientes del flujo peatonal. Activar convenios con al menos 3 empresas en el primer trimestre."
     },
     {
-      "titulo": "Presión competitiva de cadenas con mayor presupuesto de marketing",
-      "descripcion": "La apertura de franquicias nacionales en Zona Río (identificada como amenaza en el FODA) representa un riesgo de erosión de clientela para un negocio independiente que no puede competir en alcance publicitario ni en programas de lealtad digitales.",
+      "titulo": "Presión competitiva de cadenas con mayor presupuesto",
+      "descripcion": "La apertura de franquicias nacionales en Zona Río representa un riesgo de erosión de clientela para un negocio independiente que no puede competir en alcance publicitario ni en programas de lealtad digitales.",
       "severidad": "media",
       "fuente": "zona",
-      "mitigacion": "Construir identidad local diferenciada: nombre del barista, origen de los granos, historia del negocio. Implementar programa de lealtad con tarjeta física o app sencilla desde el día de apertura. El cliente de especialidad en Zona Río valora la experiencia artesanal sobre la cadena."
+      "mitigacion": "Construir identidad local diferenciada: nombre del barista, origen de los granos, historia del negocio. Implementar programa de lealtad desde el día de apertura."
     },
     {
       "titulo": "Volatilidad del tipo de cambio en insumos importados",
-      "descripcion": "Los granos de café de especialidad y equipos de barra se cotizan parcialmente en USD. Una depreciación del peso del 15% incrementaría el costo de insumos en ~$2,100 MXN/mes, comprimiendo la utilidad de $28,000 a $25,900 MXN sin posibilidad de trasladar el costo al precio de inmediato.",
+      "descripcion": "Los granos de café de especialidad se cotizan parcialmente en USD. Una depreciación del peso del 15% incrementaría el costo de insumos en ~$2,100 MXN/mes, comprimiendo la utilidad de $28,000 a $25,900 MXN.",
       "severidad": "media",
       "fuente": "foda",
-      "mitigacion": "Mantener un inventario de granos para 45-60 días que actúe como buffer ante alzas cambiarias. Evaluar proveedores nacionales de café de altura (Chiapas, Veracruz, Oaxaca) para reducir exposición al tipo de cambio sin sacrificar calidad."
+      "mitigacion": "Mantener inventario de granos para 45-60 días como buffer ante alzas cambiarias. Evaluar proveedores nacionales de café de altura (Chiapas, Veracruz, Oaxaca)."
     },
     {
-      "titulo": "Riesgo de cambio en modalidad de trabajo (home office)",
-      "descripcion": "Una transición parcial al trabajo remoto en las empresas de Zona Río reduciría estructuralmente el flujo peatonal en horario de oficina, que es el segmento principal del negocio. Este riesgo no es reversible a corto plazo si ocurre.",
+      "titulo": "Riesgo de adopción del trabajo remoto",
+      "descripcion": "Una transición parcial al home office en empresas de Zona Río reduciría estructuralmente el flujo peatonal en horario de oficina, que es el segmento principal del negocio.",
       "severidad": "baja",
       "fuente": "zona",
-      "mitigacion": "Posicionar el local como espacio de trabajo flexible con wifi de alta velocidad y mesas cómodas para atraer al trabajador remoto que busca salir de casa. Este segmento compensa exactamente la reducción del empleado de oficina tradicional."
+      "mitigacion": "Posicionar el local como espacio de trabajo flexible con wifi de alta velocidad para atraer al trabajador remoto que busca salir de casa."
     }
   ],
   "veredicto": "viable_con_reservas"

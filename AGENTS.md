@@ -5,8 +5,8 @@ This file provides guidance to agents when working with code in this repository.
 ## Stack
 
 - Python + Streamlit frontend (`app.py` in repo root)
-- Gemini API via `google-generativeai` — model: `gemini-3.6-flash`
-- `python-dotenv` for secrets; `.env` must contain `GEMINI_API_KEY`
+- Groq API via `groq` SDK — model: `openai/gpt-oss-120b`
+- `python-dotenv` for secrets; `.env` must contain `GROQ_API_KEY`
 - `requests` for live USD→MXN exchange rate (`api.frankfurter.app`); cached 1 hour via `@st.cache_data`
 - No test framework (hackathon project) — validate with `streamlit run app.py`
 
@@ -24,7 +24,8 @@ streamlit run app.py
 ├── ui/
 │   └── components.py               # All visual components — Phases 1, 2, and 3
 ├── ai/
-│   ├── gemini_client.py            # get_locations(giro, capital, ciudad, zona_preferida) → raw JSON str
+│   ├── _client.py                  # Groq singleton — get_client(), MODEL, clean_json()
+│   ├── gemini_client.py            # get_locations(...) → raw JSON str  [name kept for import compat]
 │   ├── prompt_builder.py           # Phase 1 prompt
 │   ├── scenario_client.py          # get_scenario(giro, capital, ciudad, ubicacion) → raw JSON str
 │   └── vulnerability_client.py     # get_vulnerability_analysis(...) → raw JSON str  [Phase 3]
@@ -58,9 +59,8 @@ streamlit run app.py
 - `core.scenario_parser.parse_scenario(raw) -> dict` — plain dict, not a dataclass.
 - `core.vulnerability_parser.parse_vulnerability(raw) -> dict` — plain dict, not a dataclass.
 - `core.vulnerability_analyzer.analizar_vulnerabilidades(escenario_activo, deuda, criterios_ubicacion) -> list[dict]` — pure function, no Streamlit imports, never raises on missing keys (uses `.get()` with safe defaults).
-- `load_dotenv()` called only in `gemini_client.py` — `.env` path is `parents[1]` (repo root).
-- `scenario_client.py` calls `_ensure_configured()` (idempotent load_dotenv + genai.configure) — do not assume gemini_client was imported first.
-- `vulnerability_client.py` also calls `_ensure_configured()` with the same pattern — do not assume any other AI module was imported first.
+- All AI clients call `ai._client.get_client()` — a singleton `groq.Groq` configured with `GROQ_API_KEY`. `load_dotenv()` is called inside `get_client()` (idempotent). Do not import `google.generativeai` anywhere.
+- Active model is defined in `ai/_client.MODEL` (`"openai/gpt-oss-120b"`) — change it there to update all three clients at once.
 - `parser.py` computes `nivel` from `puntaje` via `_nivel_from_puntaje()`; the AI never returns `nivel` in criteria objects.
 - `CRITERIOS_INVERTIDOS = {"costo_renta", "compatibilidad_capital"}` — for these two, high puntaje means low cost (good), so the level label and UI colour are inverted.
 - `parse_response()` detects an unrecognised-giro signal: if the root JSON contains an `"error"` key it raises `ValueError` with the `"mensaje"` value — never returns a partial list.
@@ -145,15 +145,11 @@ Notes:
 
 - `core.vulnerability_analyzer.analizar_vulnerabilidades()` evaluates 12 deterministic numeric rules against the frozen scenario (moderate scenario, no multipliers) and returns `list[dict]` ordered by severity: `"critica"` → `"alta"` → `"media"`. Returns `[]` if no issues are found — that is a valid result.
 - Each alert dict shape: `{"severidad": str, "categoria": str, "titulo": str, "detalle": str, "datos": dict}`. The `datos` key carries raw numeric values used in the evaluation (for prompt precision).
-- `analizar_vulnerabilidades()` is called **twice** per render cycle when Phase 3 is active: once when the button is pressed (to pass alerts to the AI prompt) and again on each subsequent re-render (to display the alert cards). This is intentional — the function is pure and cheap; no caching is needed.
-- Rule 10 (pessimistic scenario) only fires if rule 3 (moderate scenario capital exhaustion) has **not** already fired — to avoid redundant alerts. Rules 9 and 12 are skipped when `utilidad_neta_mes <= 0` (avoids division-by-zero). Rule 6 is an `elif` branch of rule 5 — they are mutually exclusive.
-- The exponential curve math (`_curva_k`, `_flujo_mensual`, `_calcular_pago_mensual`) is **duplicated** as private helpers inside `vulnerability_analyzer.py` — do **not** import `ui/components.py` from `core/`. Scenario factors are local constants `_FACTORES_MODERADO` and `_FACTORES_PESIMISTA`.
-- **`ai/vulnerability_client.py` is not yet implemented (Dev B pending).** `app.py` imports it unconditionally at line 28, so the app will fail to start until this file exists. During development the real call is commented out and `get_mock_vulnerability()` is used inside the `# ── TEST` block.
 - `ai.vulnerability_client.get_vulnerability_analysis()` receives the full frozen context (escenario_congelado, deuda_congelada, criterios_ubicacion, alertas_numericas) and builds a single prompt. The prompt explicitly tells Gemini the numeric alerts are already identified — it must not repeat them, only deepen their implication or add what numbers alone cannot capture.
 - Phase 3 JSON schema returned by Gemini: `{resumen_ejecutivo: str, riesgos_cuantificables: [{titulo, descripcion, severidad, mitigacion}], riesgos_contextuales: [{titulo, descripcion, severidad, fuente, mitigacion}], veredicto: str}`. `fuente` must be one of `"foda" | "zona" | "giro" | "deuda"`. `veredicto` must be one of `"viable" | "viable_con_reservas" | "riesgo_alto" | "no_viable"`.
-- `core.vulnerability_parser.parse_vulnerability()` validates the above schema strictly — raises `ValueError` on any missing key or invalid enum value. `riesgos_contextuales` must have at least 1 item; `riesgos_cuantificables` may be empty `[]`.
-- `ui.components.render_vulnerabilidades(alertas_numericas, analisis_ia)` renders: header + resumen ejecutivo + veredicto badge (🟢 viable / 🟡 viable_con_reservas / 🟠 riesgo_alto / 🔴 no_viable) → numeric alert cards (if any) → quantifiable risk cards → contextual risk cards (with fuente badge). If both numeric and quantifiable lists are empty, shows `st.success` positive confirmation.
-- Phase 2 is wrapped in `st.expander("📋 Escenario financiero", expanded=False)` when `fase3_activa` is `True`; otherwise `contextlib.nullcontext()` is used so the layout is unchanged. `_escenario_activo` is still computed inside the context manager on every render — `escenario_congelado` is a `.copy()` snapshot taken at button-press time and never updated again.
+- `core.vulnerability_parser.parse_vulnerability()` validates the above schema strictly — raises `ValueError` on any missing key or invalid enum value.
+- `ui.components.render_vulnerabilidades(alertas_numericas, analisis_ia)` renders: header + veredicto badge → numeric alert cards (if any) → quantifiable risk cards → contextual risk cards. If both numeric and quantifiable lists are empty, shows a positive confirmation message.
+- The vulnerability math (capital quemado, break-even via exponential curve) is duplicated inside `vulnerability_analyzer.py` — do **not** import `ui/components.py` from `core/`.
 
 ## Phase 3 JSON schema (returned by `get_vulnerability_analysis()`, validated by `parse_vulnerability()`)
 
@@ -180,6 +176,16 @@ Notes:
   "veredicto": "viable | viable_con_reservas | riesgo_alto | no_viable"
 }
 ```
+
+## AI provider
+
+- Provider: **Groq** (`https://api.groq.com`)
+- SDK: `groq` Python package (`groq>=0.9.0`)
+- Model: `openai/gpt-oss-120b` — defined in `ai/_client.MODEL`; change only there
+- API key env var: `GROQ_API_KEY` (in `.env`, not committed)
+- All three AI modules (`gemini_client.py`, `scenario_client.py`, `vulnerability_client.py`) import `get_client()` from `ai/_client.py`
+- `gemini_client.py` retains its original filename for import compatibility with `app.py`; the underlying provider is Groq
+- `clean_json()` lives in `ai/_client.py` and is shared by all three modules
 
 ## Code style
 

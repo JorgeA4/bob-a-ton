@@ -1,42 +1,16 @@
 """
-ai/scenario_client.py
-Fase 2 — Genera el escenario financiero + FODA para una ubicación elegida.
+ai/scenario_client.py — Fase 2: escenario financiero + FODA via Groq.
 
 Contrato: get_scenario() devuelve el JSON CRUDO como string.
 El parseo es responsabilidad exclusiva de core.scenario_parser.parse_scenario().
 """
 
-import google.generativeai as genai
-
-# Reutiliza la inicialización del cliente ya realizada por gemini_client.
-# No carga .env ni configura la API key aquí; eso lo hace gemini_client al importarse.
-# Si el usuario llama a get_scenario() sin haber llamado a get_locations() antes,
-# genai podría no estar configurado — por eso llamamos a _ensure_configured().
-from pathlib import Path
-import os
-from dotenv import load_dotenv
-
-_model: genai.GenerativeModel | None = None
-
-
-def _ensure_configured() -> None:
-    """
-    Garantiza que genai esté configurado con la API key antes de usarlo.
-    Idempotente: si ya está configurado, no hace nada costoso (load_dotenv es barato).
-    """
-    load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise EnvironmentError(
-            "No se encontró GEMINI_API_KEY. "
-            "Asegúrate de tener un archivo .env con GEMINI_API_KEY=tu_clave."
-        )
-    genai.configure(api_key=api_key)
+from ai._client import get_client, MODEL, clean_json
 
 
 def _build_scenario_prompt(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
     """
-    Construye el prompt para que Gemini devuelva el escenario financiero + FODA.
+    Construye el prompt para que Groq devuelva el escenario financiero + FODA.
     El formato de respuesta sigue el contrato de fase2/AI_INSTRUCTIONS_ESCENARIO.md.
     """
     capital_alerta = (
@@ -63,8 +37,8 @@ Instrucciones:
 4. En desglose_variables lista entre 3 y 6 conceptos de costos variables ESPECÍFICOS para {giro} (ej. granos de café, desechables, comisión de app de delivery). NO uses categorías genéricas como "otros".
 5. El código calculará los totales sumando los items — NO incluyas los campos costos_fijos_mes ni costos_variables_mes en el JSON.
 6. El FODA debe ser específico para el giro Y la ubicación — no genérico.
-7. En el objeto "madurez" estima: cuántos meses tarda el negocio en alcanzar ventas estabilizadas (meses_hasta_madurez) y a qué porcentaje de las ventas maduras arrancaría en el mes 1 (porcentaje_ventas_mes1, entre 5 y 80). Basa el estimado en el tipo de negocio, la zona y el capital disponible — un café bien ubicado madura más rápido que un taller industrial.
-8. En "inversion_inicial" estima el desembolso único necesario para abrir el negocio: depósito de renta, adecuaciones del local, equipamiento, inventario inicial y gastos de apertura. NO incluyas costos operativos mensuales recurrentes — solo los gastos de apertura one-time. Este valor puede superar el capital disponible declarado.
+7. En el objeto "madurez" estima: cuántos meses tarda el negocio en alcanzar ventas estabilizadas (meses_hasta_madurez) y a qué porcentaje de las ventas maduras arrancaría en el mes 1 (porcentaje_ventas_mes1, entre 5 y 80).
+8. En "inversion_inicial" estima el desembolso único necesario para abrir el negocio: depósito de renta, adecuaciones del local, equipamiento, inventario inicial y gastos de apertura. NO incluyas costos operativos mensuales recurrentes. Este valor puede superar el capital disponible declarado.
 9. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
 
 Estructura JSON exacta (copia esta estructura, reemplaza los valores):
@@ -117,7 +91,7 @@ Reglas de calidad:
 
 def get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
     """
-    Llama a la API de Gemini y devuelve el JSON crudo del escenario financiero.
+    Llama a la API de Groq y devuelve el JSON crudo del escenario financiero.
     No parsea la respuesta — eso es responsabilidad de core.scenario_parser.
 
     Args:
@@ -127,39 +101,24 @@ def get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
         ubicacion: Nombre de la ubicación/colonia elegida por el usuario.
 
     Returns:
-        String con el JSON crudo devuelto por Gemini.
+        String con el JSON crudo devuelto por Groq.
 
     Raises:
-        EnvironmentError: Si no se encuentra la GEMINI_API_KEY en el entorno.
+        EnvironmentError: Si no se encuentra GROQ_API_KEY en el entorno.
         RuntimeError: Si la llamada a la API falla por red, cuota u otro error.
     """
-    global _model
-    _ensure_configured()
-
-    if _model is None:
-        _model = genai.GenerativeModel("gemini-3.6-flash")
+    client = get_client()
     prompt = _build_scenario_prompt(giro, capital, ciudad, ubicacion)
 
     try:
-        response = _model.generate_content(prompt)
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
     except Exception as e:
         raise RuntimeError(
-            f"Error al llamar a la API de Gemini (escenario): {e}. "
+            f"Error al llamar a la API de Groq (escenario): {e}. "
             "Verifica tu conexión a internet o el estado de tu cuota."
         ) from e
 
-    return _clean_json(response.text)
-
-
-def _clean_json(text: str) -> str:
-    """
-    Extrae el JSON de la respuesta aunque Gemini lo envuelva en markdown.
-    Estrategia: localizar el primer '{' y el último '}' del texto y devolver
-    solo ese fragmento — funciona tanto para JSON limpio como para respuestas
-    envueltas en bloques ```json ... ```.
-    """
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return text[start : end + 1]
-    return text.strip()
+    return clean_json(response.choices[0].message.content)

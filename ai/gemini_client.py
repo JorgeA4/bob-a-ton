@@ -1,15 +1,20 @@
-import os
-from pathlib import Path
-import google.generativeai as genai
-from dotenv import load_dotenv
-from ai.prompt_builder import build_prompt
+"""
+ai/gemini_client.py — Fase 1: análisis de ubicaciones via Groq.
 
-_model: genai.GenerativeModel | None = None
+Nombre histórico mantenido para no romper imports en app.py.
+El proveedor de IA cambió de Google Gemini a Groq (llama-3.3-70b-versatile).
+
+Contrato: get_locations() devuelve el JSON CRUDO como string.
+El parseo es responsabilidad exclusiva de core.parser.parse_response().
+"""
+
+from ai._client import get_client, MODEL, clean_json
+from ai.prompt_builder import build_prompt
 
 
 def get_locations(giro: str, capital: float, ciudad: str, zona_preferida: str = "") -> str:
     """
-    Llama a la API de Gemini y devuelve el JSON crudo como string.
+    Llama a la API de Groq y devuelve el JSON crudo como string.
     No parsea la respuesta — eso es responsabilidad de core.parser.
 
     Args:
@@ -19,50 +24,24 @@ def get_locations(giro: str, capital: float, ciudad: str, zona_preferida: str = 
         zona_preferida: Zona o colonia específica que el usuario quiere evaluar (opcional).
 
     Returns:
-        String con el JSON crudo devuelto por Gemini.
+        String con el JSON crudo devuelto por Groq.
 
     Raises:
-        EnvironmentError: Si no se encuentra la GEMINI_API_KEY en el entorno.
+        EnvironmentError: Si no se encuentra GROQ_API_KEY en el entorno.
         RuntimeError: Si la llamada a la API falla por red, cuota u otro error.
     """
-    global _model
-
-    # Busca el .env en la raíz del proyecto (un nivel arriba de ai/)
-    load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
-
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        raise EnvironmentError(
-            "No se encontró GEMINI_API_KEY. "
-            "Asegúrate de tener un archivo .env con GEMINI_API_KEY=tu_clave."
-        )
-
-    genai.configure(api_key=api_key)
-    if _model is None:
-        _model = genai.GenerativeModel("gemini-3.6-flash")
-
+    client = get_client()
     prompt = build_prompt(giro, capital, ciudad, zona_preferida)
 
     try:
-        response = _model.generate_content(prompt)
+        response = client.chat.completions.create(
+            model=MODEL,
+            messages=[{"role": "user", "content": prompt}],
+        )
     except Exception as e:
         raise RuntimeError(
-            f"Error al llamar a la API de Gemini: {e}. "
+            f"Error al llamar a la API de Groq (ubicaciones): {e}. "
             "Verifica tu conexión a internet o el estado de tu cuota."
         ) from e
 
-    return _clean_json(response.text)
-
-
-def _clean_json(text: str) -> str:
-    """
-    Extrae el JSON de la respuesta aunque Gemini lo envuelva en markdown.
-    Estrategia: localizar el primer '{' y el último '}' del texto y devolver
-    solo ese fragmento — funciona tanto para JSON limpio como para respuestas
-    envueltas en bloques ```json ... ```.
-    """
-    start = text.find("{")
-    end = text.rfind("}")
-    if start != -1 and end != -1 and end > start:
-        return text[start : end + 1]
-    return text.strip()
+    return clean_json(response.choices[0].message.content)
