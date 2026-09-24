@@ -223,8 +223,7 @@ with form_col:
         submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
 
 with img_col:
-    st.image(r"ui\images\w_image.png", None, width=720, clamp=False, channels="RGB", output_format="auto", use_container_width=None, link=None
-    )
+    st.image("ui/images/w_image.png", use_container_width=True)
 
 # ── TEST — Botón de datos de ejemplo (quitar bloque completo cuando no se use)
 st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
