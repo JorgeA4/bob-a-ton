@@ -58,15 +58,15 @@ Estructura exacta del JSON a devolver:
       "nombre": "nombre real de la colonia o zona",
       "descripcion_breve": "1 o 2 oraciones describiendo la zona en contexto del negocio",
       "criterios": {{
-        "costo_renta": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "estimación concreta"}},
-        "flujo_peatonal": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "descripción del flujo"}},
-        "accesibilidad_transporte": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "medios disponibles"}},
-        "nivel_competencia": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "competencia directa"}},
-        "afinidad_con_giro": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "perfil de la zona"}},
-        "seguridad_zona": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "contexto de seguridad"}},
-        "potencial_crecimiento": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "tendencia urbana"}},
-        "visibilidad_local": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "exposición comercial"}},
-        "compatibilidad_capital": {{"nivel": "bajo|medio|alto|muy alto", "puntaje": 1, "nota": "estimación de arranque"}}
+        "costo_renta": {{"puntaje": 1, "nota": "estimación concreta"}},
+        "flujo_peatonal": {{"puntaje": 1, "nota": "descripción del flujo"}},
+        "accesibilidad_transporte": {{"puntaje": 1, "nota": "medios disponibles"}},
+        "nivel_competencia": {{"puntaje": 1, "nota": "competencia directa"}},
+        "afinidad_con_giro": {{"puntaje": 1, "nota": "perfil de la zona"}},
+        "seguridad_zona": {{"puntaje": 1, "nota": "contexto de seguridad"}},
+        "potencial_crecimiento": {{"puntaje": 1, "nota": "tendencia urbana"}},
+        "visibilidad_local": {{"puntaje": 1, "nota": "exposición comercial"}},
+        "compatibilidad_capital": {{"puntaje": 1, "nota": "estimación de arranque"}}
       }},
       "puntaje_total": 0,
       "recomendacion_ia": "2 o 3 oraciones con recomendación accionable considerando el capital"

@@ -1,6 +1,8 @@
 import streamlit as st
 import plotly.graph_objects as go
 
+from core.parser import CRITERIOS_INVERTIDOS
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Constantes de dominio
 # ──────────────────────────────────────────────────────────────────────────────
@@ -17,12 +19,21 @@ CRITERIOS_LABELS = {
     "compatibilidad_capital": "Capital",
 }
 
-# Niveles → color CSS + emoji
+# Niveles → color CSS + emoji  (criterios normales: alto = bueno = verde)
 NIVEL_META = {
     "muy alto": {"emoji": "🟢", "color": "#16a34a", "bg": "#dcfce7", "label": "Muy alto"},
     "alto":     {"emoji": "🔵", "color": "#2563eb", "bg": "#dbeafe", "label": "Alto"},
     "medio":    {"emoji": "🟡", "color": "#d97706", "bg": "#fef9c3", "label": "Medio"},
     "bajo":     {"emoji": "🔴", "color": "#dc2626", "bg": "#fee2e2", "label": "Bajo"},
+}
+
+# Para criterios invertidos el color refleja bondad (puntaje alto = bueno = verde)
+# aunque el label diga "Bajo" (renta baja = bueno).
+NIVEL_META_INVERTIDO = {
+    "bajo":     {"emoji": "🟢", "color": "#16a34a", "bg": "#dcfce7", "label": "Bajo"},
+    "medio":    {"emoji": "🔵", "color": "#2563eb", "bg": "#dbeafe", "label": "Medio"},
+    "alto":     {"emoji": "🟡", "color": "#d97706", "bg": "#fef9c3", "label": "Alto"},
+    "muy alto": {"emoji": "🔴", "color": "#dc2626", "bg": "#fee2e2", "label": "Muy alto"},
 }
 
 # Paleta corporativa para las 5 ubicaciones (coincide en tabla y gráfico)
@@ -44,9 +55,12 @@ def _nivel_raw(ubicacion: dict, clave: str) -> str:
     return ubicacion.get("criterios", {}).get(clave, {}).get("nivel", "").lower()
 
 
-def _badge(nivel_raw: str, puntaje: int) -> str:
-    """Devuelve un <span> HTML estilizado para el nivel/puntaje de un criterio."""
-    meta = NIVEL_META.get(nivel_raw, {"color": "#6b7280", "bg": "#f3f4f6", "label": nivel_raw.title() or "—"})
+def _badge(nivel_raw: str, puntaje: int, invertido: bool = False) -> str:
+    """Devuelve un <span> HTML estilizado para el nivel/puntaje de un criterio.
+    Si invertido=True usa la paleta de colores invertida (bajo=verde, muy alto=rojo).
+    """
+    tabla = NIVEL_META_INVERTIDO if invertido else NIVEL_META
+    meta = tabla.get(nivel_raw, {"color": "#6b7280", "bg": "#f3f4f6", "label": nivel_raw.title() or "—"})
     return (
         f'<span style="display:inline-flex;align-items:center;gap:4px;'
         f'background:{meta["bg"]};color:{meta["color"]};'
@@ -129,7 +143,8 @@ def render_tabla(ubicaciones: list) -> None:
         for u in ubicaciones:
             p = _puntaje(u, clave)
             n = _nivel_raw(u, clave)
-            cells += f'<td style="text-align:center;padding:8px 12px;background:{bg};">{_badge(n, p)}</td>'
+            inv = clave in CRITERIOS_INVERTIDOS
+            cells += f'<td style="text-align:center;padding:8px 12px;background:{bg};">{_badge(n, p, inv)}</td>'
         body_rows += f"<tr>{cells}</tr>"
 
     # ── Fila de totales ──────────────────────────────────────────────────────
