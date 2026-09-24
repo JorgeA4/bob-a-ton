@@ -634,20 +634,13 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
         margen_pct = ((precio - costo_unit) / precio * 100) if precio > 0 else 0.0
         mc_color = _COLOR_POSITIVO if margen_pct >= 40 else (_COLOR_ADVERTENCIA if margen_pct >= 20 else _COLOR_NEGATIVO)
 
-        if utilidad <= 0 or mrc is None:
-            semaforo, semaforo_color = "🔴", _COLOR_NEGATIVO
-        elif mrc > 24:
-            semaforo, semaforo_color = "🟡", _COLOR_ADVERTENCIA
-        else:
-            semaforo, semaforo_color = "🟢", _COLOR_POSITIVO
+        pe_subtitulo = (
+            f"{_fmt_moneda(precio)} precio · {_fmt_moneda(costo_unit)} costo variable"
+            if precio > 0 else "Ventas mínimas al mes para cubrir todos los costos"
+        )
 
         st.markdown(
             _kpi_card(
-                "⏱️", "Recuperación del capital",
-                f"{semaforo} {_fmt_meses(mrc)}", semaforo_color,
-                subtitulo=f"Capital evaluado: {_fmt_moneda(capital)}",
-            )
-            + _kpi_card(
                 "📊", "Margen de contribución",
                 f"{margen_pct:.1f}%", mc_color,
                 subtitulo=f"De cada venta, {margen_pct:.0f}% cubre costos fijos y genera utilidad",
@@ -655,58 +648,17 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
             + _kpi_card(
                 "⚖️", "Punto de equilibrio",
                 f"{pe:.0f} unidades", "var(--text-color)",
-                subtitulo="Ventas mínimas al mes para cubrir todos los costos",
+                subtitulo=pe_subtitulo,
             ),
             unsafe_allow_html=True,
         )
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # BLOQUE 3 — Supuestos unitarios del modelo
-    # ══════════════════════════════════════════════════════════════════════════
-    st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
-    st.markdown(
-        '<div style="font-size:0.7rem;font-weight:700;letter-spacing:.09em;'
-        'color:var(--text-color);opacity:0.45;margin-bottom:6px;text-transform:uppercase;">'
-        'Supuestos del modelo</div>',
-        unsafe_allow_html=True,
-    )
-    margen_unit = precio - costo_unit
-    sup_html = (
-        f'<div style="background:var(--secondary-background-color);'
-        f'border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
-        f'padding:14px 24px;display:flex;gap:40px;flex-wrap:wrap;">'
-        f'<div>'
-        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;">Precio unitario promedio</div>'
-        f'<div style="font-size:0.95rem;font-weight:600;color:var(--text-color);">{_fmt_moneda(precio)}</div>'
-        f'</div>'
-        f'<div>'
-        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;">Costo variable unitario</div>'
-        f'<div style="font-size:0.95rem;font-weight:600;color:var(--text-color);">{_fmt_moneda(costo_unit)}</div>'
-        f'</div>'
-        f'<div>'
-        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;">Margen unitario</div>'
-        f'<div style="font-size:0.95rem;font-weight:600;color:var(--text-color);">{_fmt_moneda(margen_unit)}</div>'
-        f'</div>'
-        f'</div>'
-    )
-    st.markdown(sup_html, unsafe_allow_html=True)
-
-    # ── Alerta / semáforo narrativo ───────────────────────────────────────────
+    # ── Alerta de utilidad negativa (estructural — la curva también lo reflejará)
     st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
     if utilidad < 0:
         st.error(
-            "⚠️ El escenario muestra **utilidad neta negativa**. "
+            "⚠️ El escenario muestra **utilidad neta negativa** en régimen estable. "
             "Considera ajustar precios o reducir costos antes de abrir."
-        )
-    elif mrc is not None and mrc > 24:
-        st.warning(
-            f"⚠️ La recuperación del capital tomará **{_fmt_meses(mrc)}** — "
-            "más de 2 años. Evalúa si el capital disponible es suficiente para sostener la operación."
-        )
-    else:
-        st.success(
-            f"✅ Con una utilidad de **{_fmt_moneda(utilidad)}/mes**, "
-            f"recuperarías el capital en **{_fmt_meses(mrc)}**."
         )
 
     # ── Devolver valores activos para que app.py los pase a render_deuda ──────

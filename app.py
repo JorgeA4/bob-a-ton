@@ -418,7 +418,7 @@ if "ubicaciones" in st.session_state:
 
         # ── Curva de maduración ───────────────────────────────────────────────
         st.markdown("<hr>", unsafe_allow_html=True)
-        render_madurez(_escenario)
+        render_madurez(_escenario_activo)
 
         # ── Botón: FODA ───────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
