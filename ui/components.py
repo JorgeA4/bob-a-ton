@@ -383,13 +383,94 @@ def _fmt_meses(valor: float | None) -> str:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 5. render_escenario — tarjetas de métricas del escenario base
+# 5. render_escenario — informe financiero vertical (P&L → viabilidad → supuestos)
 # ──────────────────────────────────────────────────────────────────────────────
+
+# Labels para los desgloses de costos
+_LABELS_FIJOS = {
+    "renta":       "Renta",
+    "nomina":      "Nómina",
+    "servicios":   "Servicios",
+    "otros_fijos": "Otros fijos",
+}
+_LABELS_VARIABLES = {
+    "insumos":          "Insumos",
+    "comisiones":       "Comisiones",
+    "empaque":          "Empaque",
+    "otros_variables":  "Otros variables",
+}
+
+
+def _pl_row(label: str, valor: str, color: str, indent: int = 0,
+            is_total: bool = False, help_text: str = "") -> str:
+    """Genera una fila HTML del estado de resultados."""
+    indent_px = f"{indent * 16}px"
+    font_size = "1rem" if is_total else "0.875rem"
+    font_weight = "700" if is_total else "400"
+    border_top = (
+        "border-top:2px solid rgba(128,128,128,0.2);margin-top:6px;padding-top:10px;"
+        if is_total else ""
+    )
+    label_opacity = "" if is_total else "opacity:0.8;"
+
+    help_icon = ""
+    if help_text:
+        help_icon = (
+            f' <span title="{help_text}" style="cursor:help;font-size:0.8rem;'
+            f'opacity:0.45;user-select:none;" aria-label="{help_text}">ⓘ</span>'
+        )
+
+    return (
+        f'<div style="display:flex;justify-content:space-between;align-items:baseline;'
+        f'padding:6px 0;padding-left:{indent_px};{border_top}">'
+        f'<span style="font-size:{font_size};font-weight:{font_weight};'
+        f'color:var(--text-color);{label_opacity}">'
+        f'{label}{help_icon}'
+        f'</span>'
+        f'<span style="font-size:{font_size};font-weight:{font_weight};'
+        f'color:{color};white-space:nowrap;">'
+        f'{valor}'
+        f'</span>'
+        f'</div>'
+    )
+
+
+def _pl_desglose(items: dict, labels: dict) -> str:
+    """Genera filas de desglose indentadas para costos fijos o variables."""
+    html = ""
+    for key, label in labels.items():
+        val = items.get(key)
+        if val is not None:
+            html += _pl_row(label, _fmt_moneda(val), "var(--text-color)", indent=2)
+    return html
+
+
+def _kpi_card(emoji: str, titulo: str, valor: str, color: str, subtitulo: str = "") -> str:
+    """Tarjeta de KPI con título grande y valor destacado."""
+    sub_html = (
+        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;margin-top:5px;">'
+        f'{subtitulo}</div>'
+        if subtitulo else ""
+    )
+    return (
+        f'<div style="background:var(--secondary-background-color);'
+        f'border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
+        f'padding:16px 20px;margin-bottom:10px;">'
+        f'<div style="font-size:0.82rem;font-weight:600;color:var(--text-color);'
+        f'margin-bottom:6px;">{emoji} {titulo}</div>'
+        f'<div style="font-size:1.55rem;font-weight:800;color:{color};line-height:1.1;">'
+        f'{valor}</div>'
+        f'{sub_html}'
+        f'</div>'
+    )
+
 
 def render_escenario(escenario: dict) -> None:
     """
-    Muestra las métricas clave del escenario financiero en st.metric cards.
-    No recalcula — muestra los valores tal como los devolvió parse_scenario().
+    Muestra el escenario financiero como informe vertical en tres bloques:
+      1. Estado de resultados mensual (P&L) con desglose de costos
+      2. Métricas de viabilidad con semáforo
+      3. Supuestos unitarios del modelo
 
     Args:
         escenario: dict validado devuelto por core.scenario_parser.parse_scenario().
@@ -397,66 +478,148 @@ def render_escenario(escenario: dict) -> None:
     ubicacion = escenario.get("ubicacion", "—")
     st.subheader(f"📋 Escenario financiero — {ubicacion}")
 
-    utilidad = escenario.get("utilidad_neta_mes", 0.0)
-    mrc = escenario.get("meses_recuperacion_capital")
+    ingresos   = escenario.get("ingresos_estimados_mes", 0.0)
+    fijos      = escenario.get("costos_fijos_mes", 0.0)
+    variables  = escenario.get("costos_variables_mes", 0.0)
+    utilidad   = escenario.get("utilidad_neta_mes", 0.0)
+    mrc        = escenario.get("meses_recuperacion_capital")
+    pe         = escenario.get("punto_equilibrio_unidades", 0.0)
+    precio     = escenario.get("precio_unitario_promedio", 0.0)
+    costo_unit = escenario.get("costo_variable_unitario", 0.0)
+    capital    = escenario.get("capital", 0.0)
+    df         = escenario.get("desglose_fijos")
+    dv         = escenario.get("desglose_variables")
 
-    # Fila 1: ingresos, costos fijos, costos variables, utilidad neta
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric(
-            "💰 Ingresos estimados / mes",
-            _fmt_moneda(escenario.get("ingresos_estimados_mes", 0.0)),
-        )
-    with col2:
-        st.metric(
-            "🏢 Costos fijos / mes",
-            _fmt_moneda(escenario.get("costos_fijos_mes", 0.0)),
-        )
-    with col3:
-        st.metric(
-            "📦 Costos variables / mes",
-            _fmt_moneda(escenario.get("costos_variables_mes", 0.0)),
-        )
-    with col4:
-        color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
+    margen_pct = ((precio - costo_unit) / precio * 100) if precio > 0 else 0.0
+    color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
+
+    # ── Semáforo de recuperación ──────────────────────────────────────────────
+    if utilidad <= 0 or mrc is None:
+        semaforo = "🔴"
+        semaforo_color = _COLOR_NEGATIVO
+    elif mrc > 24:
+        semaforo = "🟡"
+        semaforo_color = _COLOR_ADVERTENCIA
+    else:
+        semaforo = "🟢"
+        semaforo_color = _COLOR_POSITIVO
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # BLOQUE 1 — Estado de resultados + BLOQUE 2 — Viabilidad (lado a lado)
+    # ══════════════════════════════════════════════════════════════════════════
+    pl_col, gap_col, kpi_col = st.columns([5, 1, 4])
+
+    with pl_col:
         st.markdown(
-            f'<div style="background:var(--secondary-background-color);border-radius:8px;padding:12px 16px;">'
-            f'<div style="font-size:0.85rem;color:var(--text-color);opacity:0.7;margin-bottom:4px;">📈 Utilidad neta / mes</div>'
-            f'<div style="font-size:1.6rem;font-weight:700;color:{color_utilidad};">'
-            f'{_fmt_moneda(utilidad)}</div>'
+            '<div style="font-size:0.7rem;font-weight:700;letter-spacing:.09em;'
+            'color:var(--text-color);opacity:0.45;margin-bottom:8px;text-transform:uppercase;">'
+            'Estado de resultados · mensual</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Fila ingresos
+        rows_html = _pl_row(
+            "Ingresos estimados", _fmt_moneda(ingresos), _COLOR_NEUTRO,
+            help_text="Proyección mensual de ventas estimada por la IA para este giro y ubicación.",
+        )
+
+        # Fila costos fijos + desglose opcional
+        rows_html += _pl_row(
+            "Costos fijos", _fmt_moneda(fijos), "var(--text-color)", indent=1,
+            help_text="Gastos fijos mensuales que se pagan independientemente de cuánto vendas: renta, nómina base, servicios.",
+        )
+        if df:
+            rows_html += _pl_desglose(df, _LABELS_FIJOS)
+
+        # Fila costos variables + desglose opcional
+        rows_html += _pl_row(
+            "Costos variables", _fmt_moneda(variables), "var(--text-color)", indent=1,
+            help_text="Gastos que crecen con el volumen de ventas: materia prima, insumos, comisiones.",
+        )
+        if dv:
+            rows_html += _pl_desglose(dv, _LABELS_VARIABLES)
+
+        # Fila utilidad (total)
+        rows_html += _pl_row(
+            "Utilidad neta", _fmt_moneda(utilidad), color_utilidad,
+            is_total=True,
+            help_text="Lo que queda después de restar todos los costos a los ingresos. Si es negativa, el negocio pierde dinero ese mes.",
+        )
+
+        st.markdown(
+            f'<div style="background:var(--secondary-background-color);'
+            f'border:1px solid rgba(128,128,128,0.2);border-radius:14px;'
+            f'padding:20px 24px;">'
+            f'{rows_html}'
             f'</div>',
             unsafe_allow_html=True,
         )
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # BLOQUE 2 — Métricas de viabilidad
+    # ══════════════════════════════════════════════════════════════════════════
+    with kpi_col:
+        st.markdown(
+            '<div style="font-size:0.7rem;font-weight:700;letter-spacing:.09em;'
+            'color:var(--text-color);opacity:0.45;margin-bottom:8px;text-transform:uppercase;">'
+            'Viabilidad</div>',
+            unsafe_allow_html=True,
+        )
+
+        mc_color = _COLOR_POSITIVO if margen_pct >= 40 else (_COLOR_ADVERTENCIA if margen_pct >= 20 else _COLOR_NEGATIVO)
+
+        st.markdown(
+            _kpi_card(
+                "⏱️", "Recuperación del capital",
+                f"{semaforo} {_fmt_meses(mrc)}", semaforo_color,
+                subtitulo=f"Capital evaluado: {_fmt_moneda(capital)}",
+            )
+            + _kpi_card(
+                "📊", "Margen de contribución",
+                f"{margen_pct:.1f}%", mc_color,
+                subtitulo=f"De cada venta, {margen_pct:.0f}% cubre costos fijos y genera utilidad",
+            )
+            + _kpi_card(
+                "⚖️", "Punto de equilibrio",
+                f"{pe:.0f} unidades", "var(--text-color)",
+                subtitulo="Ventas mínimas al mes para cubrir todos los costos",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # BLOQUE 3 — Supuestos unitarios del modelo
+    # ══════════════════════════════════════════════════════════════════════════
+    st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+    st.markdown(
+        '<div style="font-size:0.7rem;font-weight:700;letter-spacing:.09em;'
+        'color:var(--text-color);opacity:0.45;margin-bottom:6px;text-transform:uppercase;">'
+        'Supuestos del modelo</div>',
+        unsafe_allow_html=True,
+    )
+    margen_unit = precio - costo_unit
+    sup_html = (
+        f'<div style="background:var(--secondary-background-color);'
+        f'border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
+        f'padding:14px 24px;display:flex;gap:40px;flex-wrap:wrap;">'
+        f'<div>'
+        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;">Precio unitario promedio</div>'
+        f'<div style="font-size:0.95rem;font-weight:600;color:var(--text-color);">{_fmt_moneda(precio)}</div>'
+        f'</div>'
+        f'<div>'
+        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;">Costo variable unitario</div>'
+        f'<div style="font-size:0.95rem;font-weight:600;color:var(--text-color);">{_fmt_moneda(costo_unit)}</div>'
+        f'</div>'
+        f'<div>'
+        f'<div style="font-size:0.72rem;color:var(--text-color);opacity:0.5;">Margen unitario</div>'
+        f'<div style="font-size:0.95rem;font-weight:600;color:var(--text-color);">{_fmt_moneda(margen_unit)}</div>'
+        f'</div>'
+        f'</div>'
+    )
+    st.markdown(sup_html, unsafe_allow_html=True)
+
+    # ── Alerta / semáforo narrativo ───────────────────────────────────────────
     st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-
-    # Fila 2: punto de equilibrio, recuperación, precio unitario, margen
-    col5, col6, col7, col8 = st.columns(4)
-    with col5:
-        st.metric(
-            "⚖️ Punto de equilibrio",
-            f"{escenario.get('punto_equilibrio_unidades', 0.0):.0f} unidades/mes",
-        )
-    with col6:
-        st.metric(
-            "⏱️ Recuperación del capital",
-            _fmt_meses(mrc),
-        )
-    with col7:
-        st.metric(
-            "🏷️ Precio unitario promedio",
-            _fmt_moneda(escenario.get("precio_unitario_promedio", 0.0)),
-        )
-    with col8:
-        precio = escenario.get("precio_unitario_promedio", 0.0)
-        costo_unit = escenario.get("costo_variable_unitario", 0.0)
-        margen_pct = ((precio - costo_unit) / precio * 100) if precio > 0 else 0.0
-        st.metric(
-            "📊 Margen de contribución",
-            f"{margen_pct:.1f}%",
-        )
-
-    # Alerta visual si utilidad es negativa
     if utilidad < 0:
         st.error(
             "⚠️ El escenario muestra **utilidad neta negativa**. "
@@ -465,7 +628,12 @@ def render_escenario(escenario: dict) -> None:
     elif mrc is not None and mrc > 24:
         st.warning(
             f"⚠️ La recuperación del capital tomará **{_fmt_meses(mrc)}** — "
-            "más de 2 años. Evalúa si el capital es suficiente."
+            "más de 2 años. Evalúa si el capital disponible es suficiente para sostener la operación."
+        )
+    else:
+        st.success(
+            f"✅ Con una utilidad de **{_fmt_moneda(utilidad)}/mes**, "
+            f"recuperarías el capital en **{_fmt_meses(mrc)}**."
         )
 
 

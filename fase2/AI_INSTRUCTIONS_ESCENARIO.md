@@ -24,7 +24,19 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "ubicacion": "string",
   "ingresos_estimados_mes": 45000.0,
   "costos_fijos_mes": 18000.0,
+  "desglose_fijos": {
+    "renta": 8000.0,
+    "nomina": 6000.0,
+    "servicios": 2000.0,
+    "otros_fijos": 2000.0
+  },
   "costos_variables_mes": 9000.0,
+  "desglose_variables": {
+    "insumos": 5000.0,
+    "comisiones": 1000.0,
+    "empaque": 1500.0,
+    "otros_variables": 1500.0
+  },
   "utilidad_neta_mes": 18000.0,
   "punto_equilibrio_unidades": 120.0,
   "meses_recuperacion_capital": 6.0,
@@ -50,8 +62,16 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 | `ciudad` | string | Ciudad (echo del input) |
 | `ubicacion` | string | Nombre de la ubicación elegida (echo del input) |
 | `ingresos_estimados_mes` | float | Ingresos brutos estimados en el primer año de operación normal (MXN/mes) |
-| `costos_fijos_mes` | float | Renta + servicios + nómina base + otros fijos (MXN/mes) |
-| `costos_variables_mes` | float | Insumos, comisiones, empaque, etc. proporcionales a las ventas (MXN/mes) |
+| `costos_fijos_mes` | float | Total de costos fijos del mes — debe igualar la suma del desglose (MXN/mes) |
+| `desglose_fijos.renta` | float | Renta del local (MXN/mes) |
+| `desglose_fijos.nomina` | float | Nómina base de empleados fijos (MXN/mes) |
+| `desglose_fijos.servicios` | float | Agua, luz, internet, gas, etc. (MXN/mes) |
+| `desglose_fijos.otros_fijos` | float | Seguros, mantenimiento, contabilidad y otros fijos (MXN/mes) |
+| `costos_variables_mes` | float | Total de costos variables del mes — debe igualar la suma del desglose (MXN/mes) |
+| `desglose_variables.insumos` | float | Materia prima e insumos directos proporcionales a ventas (MXN/mes) |
+| `desglose_variables.comisiones` | float | Comisiones por venta, plataformas de entrega, etc. (MXN/mes) |
+| `desglose_variables.empaque` | float | Empaques, bolsas, desechables proporcionales a ventas (MXN/mes) |
+| `desglose_variables.otros_variables` | float | Otros costos que varían con el volumen de ventas (MXN/mes) |
 | `utilidad_neta_mes` | float | `ingresos_estimados_mes - costos_fijos_mes - costos_variables_mes` |
 | `punto_equilibrio_unidades` | float | Unidades/servicios mínimos para cubrir costos totales al mes |
 | `meses_recuperacion_capital` | float | `capital / utilidad_neta_mes` (redondeado a 1 decimal) |
@@ -69,6 +89,8 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 - `utilidad_neta_mes` debe ser exactamente `ingresos_estimados_mes - costos_fijos_mes - costos_variables_mes`.
 - `meses_recuperacion_capital` debe ser `capital / utilidad_neta_mes` (si utilidad ≤ 0, devolver `null`).
 - `punto_equilibrio_unidades` = `costos_fijos_mes / (precio_unitario_promedio - costo_variable_unitario)`.
+- `desglose_fijos.renta + nomina + servicios + otros_fijos` debe igualar `costos_fijos_mes`.
+- `desglose_variables.insumos + comisiones + empaque + otros_variables` debe igualar `costos_variables_mes`.
 - Todos los valores monetarios en MXN, sin símbolos de moneda, como `float` puro.
 - Responder **solo con JSON bare** — sin bloques ```json```, sin texto previo, sin texto posterior.
 - JSON válido siempre: sin comas finales, sin comentarios.
@@ -87,7 +109,19 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "ubicacion": "Condesa",
   "ingresos_estimados_mes": 52000.0,
   "costos_fijos_mes": 21000.0,
+  "desglose_fijos": {
+    "renta": 10000.0,
+    "nomina": 7000.0,
+    "servicios": 2500.0,
+    "otros_fijos": 1500.0
+  },
   "costos_variables_mes": 11000.0,
+  "desglose_variables": {
+    "insumos": 7000.0,
+    "comisiones": 1000.0,
+    "empaque": 1500.0,
+    "otros_variables": 1500.0
+  },
   "utilidad_neta_mes": 20000.0,
   "punto_equilibrio_unidades": 233.0,
   "meses_recuperacion_capital": 6.0,

@@ -29,6 +29,10 @@ _CLAVES_FODA = {"fortalezas", "oportunidades", "debilidades", "amenazas"}
 # Todas las claves raíz requeridas
 _CLAVES_RAIZ = _CLAVES_NUMERICAS | _CLAVES_STRING | {_CLAVE_MRC, _CLAVE_FODA}
 
+# Desgloses opcionales: subclaves esperadas dentro de cada sección
+_CLAVES_DESGLOSE_FIJOS     = {"renta", "nomina", "servicios", "otros_fijos"}
+_CLAVES_DESGLOSE_VARIABLES = {"insumos", "comisiones", "empaque", "otros_variables"}
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Helper interno
@@ -132,10 +136,34 @@ def parse_scenario(json_str: str) -> dict:
         # Coercionar cada elemento a str; descartar elementos vacíos
         foda[categoria] = [str(item) for item in items if str(item).strip()]
 
-    # 7. Ensamblar el dict de salida con solo las claves conocidas
-    return {
+    # 7. Desgloses opcionales — si no están presentes se omiten del resultado
+    desglose_fijos: dict | None = None
+    if "desglose_fijos" in data and isinstance(data["desglose_fijos"], dict):
+        raw_df = data["desglose_fijos"]
+        desglose_fijos = {
+            k: float(raw_df[k])
+            for k in _CLAVES_DESGLOSE_FIJOS
+            if k in raw_df
+        }
+
+    desglose_variables: dict | None = None
+    if "desglose_variables" in data and isinstance(data["desglose_variables"], dict):
+        raw_dv = data["desglose_variables"]
+        desglose_variables = {
+            k: float(raw_dv[k])
+            for k in _CLAVES_DESGLOSE_VARIABLES
+            if k in raw_dv
+        }
+
+    # 8. Ensamblar el dict de salida con solo las claves conocidas
+    result = {
         **strings,
         **numericos,
         _CLAVE_MRC: meses_recuperacion,
         _CLAVE_FODA: foda,
     }
+    if desglose_fijos is not None:
+        result["desglose_fijos"] = desglose_fijos
+    if desglose_variables is not None:
+        result["desglose_variables"] = desglose_variables
+    return result

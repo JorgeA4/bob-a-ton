@@ -5,7 +5,19 @@
   "capital": 150000.0,
   "ingresos_estimados_mes": 78000.0,
   "costos_fijos_mes": 28000.0,
+  "desglose_fijos": {
+    "renta": 14000.0,
+    "nomina": 9000.0,
+    "servicios": 3000.0,
+    "otros_fijos": 2000.0
+  },
   "costos_variables_mes": 22000.0,
+  "desglose_variables": {
+    "insumos": 14000.0,
+    "comisiones": 2000.0,
+    "empaque": 3500.0,
+    "otros_variables": 2500.0
+  },
   "utilidad_neta_mes": 28000.0,
   "punto_equilibrio_unidades": 467.0,
   "meses_recuperacion_capital": 5.4,

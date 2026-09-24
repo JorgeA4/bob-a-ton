@@ -60,8 +60,10 @@ Instrucciones:
 3. Calcula utilidad_neta_mes = ingresos_estimados_mes - costos_fijos_mes - costos_variables_mes.
 4. Calcula meses_recuperacion_capital = capital / utilidad_neta_mes (null si utilidad <= 0).
 5. Calcula punto_equilibrio_unidades = costos_fijos_mes / (precio_unitario_promedio - costo_variable_unitario).
-6. El FODA debe ser específico para el giro Y la ubicación — no genérico.
-7. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
+6. Desglosa costos_fijos_mes en desglose_fijos: renta + nomina + servicios + otros_fijos (deben sumar costos_fijos_mes).
+7. Desglosa costos_variables_mes en desglose_variables: insumos + comisiones + empaque + otros_variables (deben sumar costos_variables_mes).
+8. El FODA debe ser específico para el giro Y la ubicación — no genérico.
+9. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
 
 Estructura JSON exacta (copia esta estructura, reemplaza los valores):
 {{
@@ -71,7 +73,19 @@ Estructura JSON exacta (copia esta estructura, reemplaza los valores):
   "ubicacion": "{ubicacion}",
   "ingresos_estimados_mes": 0.0,
   "costos_fijos_mes": 0.0,
+  "desglose_fijos": {{
+    "renta": 0.0,
+    "nomina": 0.0,
+    "servicios": 0.0,
+    "otros_fijos": 0.0
+  }},
   "costos_variables_mes": 0.0,
+  "desglose_variables": {{
+    "insumos": 0.0,
+    "comisiones": 0.0,
+    "empaque": 0.0,
+    "otros_variables": 0.0
+  }},
   "utilidad_neta_mes": 0.0,
   "punto_equilibrio_unidades": 0.0,
   "meses_recuperacion_capital": 0.0,
@@ -87,6 +101,8 @@ Estructura JSON exacta (copia esta estructura, reemplaza los valores):
 
 Reglas de calidad:
 - Los valores deben ser realistas para {giro} en {ubicacion}, {ciudad}.
+- Los valores de desglose_fijos deben sumar exactamente costos_fijos_mes.
+- Los valores de desglose_variables deben sumar exactamente costos_variables_mes.
 - Incluye 3 o 4 elementos en cada lista del FODA.
 - JSON válido siempre: sin comas finales, sin comentarios, sin texto fuera del JSON.
 """
