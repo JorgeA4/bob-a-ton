@@ -76,11 +76,11 @@ streamlit run app.py
 
 Notes:
 - `foda` and `deuda` are **not** standalone session_state keys. FODA data lives inside `escenario["foda"]`; debt inputs are built inline in `app.py` and passed directly to `render_deuda()`.
-- All Phase 2 toggle keys (`mostrar_ajustes`, `mostrar_foda`, `mostrar_deuda`) are cleared whenever a new Phase 1 analysis is submitted or a new location is confirmed.
+- All Phase 2 toggle keys (`modo_edicion_escenario`, `mostrar_foda`, `mostrar_deuda`) are cleared whenever a new Phase 1 analysis is submitted or a new location is confirmed.
 
 ## Phase 2 financial metrics (computed in frontend, no AI call)
 
-- Gemini returns pre-computed `ingresos_estimados_mes`, `costos_fijos_mes`, `costos_variables_mes`, `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario` — all floats, MXN/month.
+- Gemini returns `ingresos_estimados_mes`, `desglose_fijos` (list), `desglose_variables` (list), `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario`. `costos_fijos_mes` and `costos_variables_mes` are **computed by `parse_scenario()`** by summing the respective breakdown lists — Gemini never sends them.
 - The adjust panel is inline in `render_escenario()` (toggle via `modo_edicion_escenario` session state key); viability KPIs recalculate in real time with the edited values.
 - Pago deuda mensual = French amortisation formula (applied in `render_deuda()`).
 - Viability semaphore: 🔴 utilidad ≤ 0 · 🟡 recuperación > 24 meses · 🟢 recuperación ≤ 24 meses
@@ -124,4 +124,4 @@ Notes:
 - Mock data lives in `tests/mock_ubicaciones.json` (Phase 1 shape) and `tests/mock_escenario.json` (Phase 2 shape).
 - The test button and its imports are delimited by `# ── TEST` / `# ── FIN TEST` comments in `app.py` — remove those blocks and swap back `get_scenario(...)` to disable mock mode.
 - `tests/` files must never be imported outside of the clearly marked test blocks in `app.py`.
-- Do not modify the JSON schemas in `tests/` — they must always match the shapes validated by `core/parser.py` and `core/scenario_parser.py`.
+- `tests/mock_escenario.json` must always match the shape validated by `core/scenario_parser.py`. When the Phase 2 JSON schema changes, update both the parser and the mock together.
