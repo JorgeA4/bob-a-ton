@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 
 from ai.gemini_client import get_locations
 from core.parser import parse_response
@@ -170,13 +171,35 @@ _CIUDADES = [
     "Veracruz",
 ]
 
+@st.cache_data(ttl=3600)
+def _get_tipo_cambio_usd_mxn() -> float:
+    """Obtiene el tipo de cambio USD→MXN desde api.frankfurter.app. Cachea 1 hora."""
+    try:
+        resp = requests.get("https://api.frankfurter.app/latest?from=USD&to=MXN", timeout=5)
+        resp.raise_for_status()
+        return float(resp.json()["rates"]["MXN"])
+    except Exception:
+        return None
+
+
 with form_col:
     with st.form("form_negocio"):
         giro = st.text_input(
             "Giro del negocio",
             placeholder="Ej. Café, Taller mecánico, Veterinaria...",
         )
-        capital = st.number_input("Capital inicial (MXN)", min_value=1, step=5000, value=100000)
+        moneda = st.session_state.get("_moneda_form", "MXN")
+        capital_col, moneda_col = st.columns([3, 1])
+        with capital_col:
+            capital_input = st.number_input(
+                f"Capital inicial ({moneda})",
+                min_value=1,
+                step=500 if moneda == "USD" else 5000,
+                value=5000 if moneda == "USD" else 100000,
+            )
+        with moneda_col:
+            st.markdown("<div style='margin-top:28px;'></div>", unsafe_allow_html=True)
+            moneda = st.radio("Moneda", options=["MXN", "USD"], horizontal=True, label_visibility="collapsed", key="_moneda_form")
         ciudad = st.selectbox(
             "Ciudad",
             options=_CIUDADES,
@@ -240,13 +263,24 @@ if submitted:
         errores.append("El campo **Giro del negocio** es obligatorio.")
     if not ciudad:
         errores.append("El campo **Ciudad** es obligatorio.")
-    if capital <= 0:
+    if capital_input <= 0:
         errores.append("El **capital** debe ser mayor a 0.")
 
     if errores:
         for e in errores:
             st.error(e)
     else:
+        # Conversión USD → MXN si aplica
+        if moneda == "USD":
+            tipo_cambio = _get_tipo_cambio_usd_mxn()
+            if tipo_cambio is None:
+                st.error("🌐 No se pudo obtener el tipo de cambio. Intenta de nuevo o ingresa el capital en MXN.")
+                st.stop()
+            capital = round(capital_input * tipo_cambio, 2)
+            st.info(f"💱 USD {capital_input:,.0f} convertido a **MXN {capital:,.0f}** (tipo de cambio: ${tipo_cambio:.2f})")
+        else:
+            capital = float(capital_input)
+
         with st.spinner("Consultando a la IA… esto puede tardar unos segundos."):
             try:
                 raw_json = get_locations(str(giro), capital, str(ciudad), zona_preferida.strip())
