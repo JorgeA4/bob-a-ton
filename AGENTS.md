@@ -5,9 +5,9 @@ This file provides guidance to agents when working with code in this repository.
 ## Stack
 
 - Python + Streamlit frontend (`app.py` in repo root)
-- Gemini API via `google-generativeai` — model: `gemini-1.5-flash`
+- Gemini API via `google-generativeai` — model: `gemini-3.6-flash`
 - `python-dotenv` for secrets; `.env` must contain `GEMINI_API_KEY`
-- No test framework yet (hackathon project)
+- No test framework (hackathon project) — validate with `streamlit run app.py`
 
 ## Run
 
@@ -19,43 +19,55 @@ streamlit run app.py
 
 ```
 / (repo root — all code lives here)
-├── app.py                 # Streamlit entry point (Dev A)
-├── ui/components.py       # Visual components — consume List[Ubicacion]
-├── ai/gemini_client.py    # get_locations(giro, capital, ciudad) -> str (raw JSON)
-├── ai/prompt_builder.py   # build_prompt(giro, capital, ciudad) -> str
-├── core/models.py         # Criterio and Ubicacion dataclasses
-├── core/parser.py         # parse_response(json_str: str) -> List[Ubicacion]
+├── app.py                          # Streamlit entry point (Dev A)
+├── ui/
+│   ├── components.py               # Phase 1 visual components (Dev A) — do not modify
+│   └── scenario_components.py      # Phase 2 visual components (Dev A) — to be created
+├── ai/
+│   ├── gemini_client.py            # get_locations() → raw JSON str (Dev B) — do not modify
+│   ├── prompt_builder.py           # Phase 1 prompt (Dev B) — do not modify
+│   ├── scenario_client.py          # get_scenario() → raw JSON str (Dev B) — to be created
+│   └── scenario_prompt.py          # Phase 2 prompt (Dev B) — to be created
+├── core/
+│   ├── models.py                   # Criterio, Ubicacion, RespuestaIA dataclasses (Dev C)
+│   ├── parser.py                   # parse_response(str) → List[dict] (Dev C) — do not modify
+│   └── scenario_parser.py          # parse_scenario(str) → dict (Dev C) — to be created
 ├── requirements.txt
-└── fase1/                 # Planning docs only — NO code here
-    ├── PLANNING.md
-    └── AI_INSTRUCTIONS.md
+├── .env.example
+└── fases_plans/                    # Planning docs only — NO code here
+    ├── PLANNING_fase1.md
+    └── PLANNING_fase2.md
 ```
 
 ## Hard contracts — do not break
 
-- `ai.gemini_client.get_locations()` returns a **raw JSON string** — it does NOT parse.
-- `core.parser.parse_response()` is the only parser; it converts the raw string to `List[Ubicacion]`.
-- Field names on `Ubicacion` must exactly match the JSON schema in `fase1/AI_INSTRUCTIONS.md`.
-- `puntaje_total` must be the **arithmetic sum** of the 9 individual `criterios` scores.
+- `ai.gemini_client.get_locations()` returns **raw JSON string** — never parses.
+- `ai.scenario_client.get_scenario()` returns **raw JSON string** — never parses.
+- `core.parser.parse_response(raw) -> List[dict]` — not `List[Ubicacion]`, plain dicts.
+- `core.scenario_parser.parse_scenario(raw) -> dict` — plain dict, not a dataclass.
+- `load_dotenv()` called only in `gemini_client.py` — `.env` path is `parents[1]` (repo root).
+- `scenario_client.py` must reuse `genai.configure` already done in `gemini_client.py`; do not re-configure.
+- Phase 1 files (`gemini_client.py`, `prompt_builder.py`, `components.py`, `models.py`, `parser.py`) must not be modified in Phase 2.
 
-## AI prompt rules (see `fase1/AI_INSTRUCTIONS.md`)
+## Phase 2 session_state keys
 
-- Gemini must respond with **bare JSON only** — no markdown fences, no surrounding text.
-- Always 4 real named neighborhoods (`nombre` = actual barrio/colonia, never generic labels).
-- Scores (1–10) must differ across locations for the same criterion.
-- Capital threshold logic: penalise `costo_renta` / `compatibilidad_capital` if capital < 80 000 MXN.
+| Key | Type | Description |
+|---|---|---|
+| `ubicaciones` | `list[dict]` | Phase 1 results |
+| `ubicacion_elegida` | `dict` | User-selected location |
+| `escenario` | `dict` | Parsed scenario from `parse_scenario()` |
+| `foda` | `dict` | Optional SWOT — `{fortalezas, oportunidades, debilidades, amenazas}` |
+| `deuda` | `dict` | Optional debt — `{monto, tasa_anual, plazo_meses}` |
+
+## Phase 2 financial metrics (computed in frontend, no AI call)
+
+- Ingreso mensual = `clientes_dia × ticket_promedio × dias_operacion_mes`
+- Punto de equilibrio = `costos_totales / (ticket_promedio × dias_operacion_mes)`
+- Pago deuda mensual = French amortisation formula
+- Viability semaphore: 🔴 utilidad ≤ 0 · 🟡 recuperación > 24 meses · 🟢 recuperación ≤ 24 meses
 
 ## Code style
 
-- Use `@dataclass` for models (`Criterio`, `Ubicacion`) in `core/models.py`.
-- Raise descriptive exceptions in `parser.py` when required JSON keys are missing.
-- Handle Gemini network/quota errors in `gemini_client.py` with explicit exception messages.
-- Use `st.spinner` for loading state in `app.py`.
-
-## Dependency management
-
-```bash
-pip install -r requirements.txt
-# or regenerate after adding packages:
-pip freeze > requirements.txt
-```
+- `@dataclass` models in `core/models.py`; parsers always return plain `dict`/`List[dict]`, never dataclasses.
+- Parsers raise `ValueError` with descriptive messages on missing keys; never silently return `None`.
+- `st.session_state` is the only state bridge between Phases 1 and 2.
