@@ -147,29 +147,6 @@ st.markdown(
 # ──────────────────────────────────────────────────────────────────────────────
 form_col, img_col = st.columns([1, 1], gap="large")
 
-_GIROS = [
-    "Restaurante / Cafetería",
-    "Tienda de ropa",
-    "Abarrotes / Supermercado",
-    "Gimnasio",
-    "Estética / Barbería",
-    "Papelería",
-    "Farmacia",
-    "Consultorio médico",
-    "Taller mecánico",
-    "Ferretería",
-    "Zapatería",
-    "Panadería / Pastelería",
-    "Lavandería",
-    "Floristería",
-    "Librería",
-    "Joyería / Relojería",
-    "Óptica",
-    "Veterinaria",
-    "Artículos deportivos",
-    "Electrónica / Celulares",
-]
-
 _CIUDADES = [
     "Tijuana",
     "Mexicali",
@@ -195,11 +172,9 @@ _CIUDADES = [
 
 with form_col:
     with st.form("form_negocio"):
-        giro = st.selectbox(
+        giro = st.text_input(
             "Giro del negocio",
-            options=_GIROS,
-            index=None,
-            placeholder="Escribe o selecciona...",
+            placeholder="Ej. Café, Taller mecánico, Veterinaria...",
         )
         capital = st.number_input("Capital inicial (MXN)", min_value=1, step=5000, value=100000)
         ciudad = st.selectbox(
