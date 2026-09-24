@@ -400,9 +400,13 @@ def render_escenario(escenario: dict) -> None:
         )
     with col4:
         color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
-        st.metric(
-            "📈 Utilidad neta / mes",
-            _fmt_moneda(utilidad),
+        st.markdown(
+            f'<div style="background:#f0f2f6;border-radius:8px;padding:12px 16px;">'
+            f'<div style="font-size:0.85rem;color:#555;margin-bottom:4px;">📈 Utilidad neta / mes</div>'
+            f'<div style="font-size:1.6rem;font-weight:700;color:{color_utilidad};">'
+            f'{_fmt_moneda(utilidad)}</div>'
+            f'</div>',
+            unsafe_allow_html=True,
         )
 
     st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
