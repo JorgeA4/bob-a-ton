@@ -1,0 +1,48 @@
+{
+  "resumen_ejecutivo": "El negocio presenta un perfil de riesgo moderado-alto, con una inversión inicial que supera el capital disponible y una curva de madurez extendida que exige reservas de liquidez adicionales. La utilidad neta mensual es positiva en régimen estable, pero la rampa de ventas puede consumir el capital antes de alcanzar la rentabilidad. La ubicación en Zona Río ofrece ventajas de tráfico y visibilidad, aunque la competencia establecida y los costos de renta presionan los márgenes desde el primer mes.",
+  "riesgos_cuantificables": [
+    {
+      "titulo": "Sensibilidad al precio con margen estrecho",
+      "descripcion": "Con un margen de contribución del 38%, una reducción del 10% en el precio unitario promedio (de $120 a $108 MXN) eliminaría aproximadamente $8,400 MXN de utilidad mensual, llevando el negocio a pérdida neta en los primeros meses de operación.",
+      "severidad": "alta",
+      "mitigacion": "Establecer una política de precios mínimos y diversificar el ticket promedio con productos complementarios de mayor margen (bebidas premium, combos) antes de la apertura."
+    },
+    {
+      "titulo": "Dependencia de volumen cercana al punto de equilibrio",
+      "descripcion": "El punto de equilibrio de 320 unidades/mes representa el 82% de la venta estimada de 390 unidades. Una caída del 15% en clientes — común en los primeros 3 meses de cualquier negocio nuevo — dejaría el negocio por debajo del umbral de rentabilidad durante la mayor parte de la rampa.",
+      "severidad": "alta",
+      "mitigacion": "Implementar estrategia de captación activa desde semana 1: promoción de apertura, redes sociales geolocalizadas y alianzas con negocios vecinos para generar tráfico cruzado."
+    }
+  ],
+  "riesgos_contextuales": [
+    {
+      "titulo": "Competencia establecida con base de clientes consolidada",
+      "descripcion": "La Zona Río cuenta con al menos 4 cafeterías con más de 2 años de operación en un radio de 500 metros. Los clientes habituales de la zona tienen lealtad construida, lo que puede extender la rampa de captación más allá de los 8 meses proyectados.",
+      "severidad": "alta",
+      "fuente": "zona",
+      "mitigacion": "Definir una propuesta de valor diferenciada antes de abrir: especialidad de café, experiencia de espacio o nicho de mercado (trabajo remoto, estudio) que no esté cubierto por la competencia actual."
+    },
+    {
+      "titulo": "Estacionalidad del giro en temporada de calor",
+      "descripcion": "Las cafeterías en ciudades del norte como Tijuana experimentan una caída del 20-30% en ventas de bebidas calientes entre junio y septiembre. Si la apertura coincide con ese período, el escenario pesimista se vuelve el escenario real durante los primeros meses.",
+      "severidad": "media",
+      "fuente": "giro",
+      "mitigacion": "Incorporar al menú desde el inicio bebidas frías premium (cold brew, frappés artesanales) con mayor margen que compensen la caída en bebidas calientes durante el verano."
+    },
+    {
+      "titulo": "Riesgo de incremento en costo de insumos importados",
+      "descripcion": "El café de especialidad y algunos insumos clave se cotizan en dólares. Una depreciación del peso del 10% incrementaría los costos variables en aproximadamente $3,200 MXN/mes, reduciendo la utilidad neta en un 18%.",
+      "severidad": "media",
+      "fuente": "foda",
+      "mitigacion": "Negociar contratos de abastecimiento a precio fijo con proveedores locales para al menos el 60% del volumen mensual de insumos críticos."
+    },
+    {
+      "titulo": "Riesgo regulatorio por cambios en normativa de uso de suelo",
+      "descripcion": "La Zona Río de Tijuana ha experimentado actualizaciones en permisos de uso de suelo en los últimos 2 años. Un cambio en la categoría del local podría requerir trámites adicionales que demoren 2-3 meses y generen costos no presupuestados de entre $15,000 y $40,000 MXN.",
+      "severidad": "baja",
+      "fuente": "zona",
+      "mitigacion": "Verificar el uso de suelo permitido antes de firmar el contrato de arrendamiento y solicitar asesoría legal de un gestor local con experiencia en permisos en la zona."
+    }
+  ],
+  "veredicto": "viable_con_reservas"
+}
