@@ -16,6 +16,8 @@ from pathlib import Path
 import os
 from dotenv import load_dotenv
 
+_model: genai.GenerativeModel | None = None
+
 
 def _ensure_configured() -> None:
     """
@@ -131,16 +133,15 @@ def get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
         EnvironmentError: Si no se encuentra la GEMINI_API_KEY en el entorno.
         RuntimeError: Si la llamada a la API falla por red, cuota u otro error.
     """
+    global _model
     _ensure_configured()
 
-    model = genai.GenerativeModel(
-        "gemini-3.6-flash",
-        generation_config={"response_mime_type": "application/json"},
-    )
+    if _model is None:
+        _model = genai.GenerativeModel("gemini-3.6-flash")
     prompt = _build_scenario_prompt(giro, capital, ciudad, ubicacion)
 
     try:
-        response = model.generate_content(prompt)
+        response = _model.generate_content(prompt)
     except Exception as e:
         raise RuntimeError(
             f"Error al llamar a la API de Gemini (escenario): {e}. "
