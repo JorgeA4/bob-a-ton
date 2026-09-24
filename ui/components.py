@@ -330,3 +330,351 @@ def render_recomendacion(ubicaciones: list) -> None:
 
     cards_html += "</div>"
     st.markdown(cards_html, unsafe_allow_html=True)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# FASE 2 — Escenario financiero, métricas, FODA y deuda
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Colores semánticos para métricas de fase 2 (verde = positivo, rojo = negativo)
+_COLOR_POSITIVO = "#16a34a"
+_COLOR_NEGATIVO = "#dc2626"
+_COLOR_NEUTRO = "#2563eb"
+_COLOR_ADVERTENCIA = "#d97706"
+
+# Categorías del FODA con su color e ícono
+_FODA_META = {
+    "fortalezas":    {"label": "Fortalezas",    "emoji": "💪", "color": "#16a34a", "bg": "#dcfce7"},
+    "oportunidades": {"label": "Oportunidades", "emoji": "🚀", "color": "#2563eb", "bg": "#dbeafe"},
+    "debilidades":   {"label": "Debilidades",   "emoji": "⚠️", "color": "#d97706", "bg": "#fef9c3"},
+    "amenazas":      {"label": "Amenazas",       "emoji": "🛡️", "color": "#dc2626", "bg": "#fee2e2"},
+}
+
+
+def _fmt_moneda(valor: float) -> str:
+    """Formatea un float como moneda MXN sin decimales innecesarios."""
+    return f"${valor:,.0f} MXN"
+
+
+def _fmt_meses(valor: float | None) -> str:
+    """Formatea meses de recuperación, o 'N/A' si es None."""
+    if valor is None:
+        return "N/A"
+    return f"{valor:.1f} meses"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 5. render_escenario — tarjetas de métricas del escenario base
+# ──────────────────────────────────────────────────────────────────────────────
+
+def render_escenario(escenario: dict) -> None:
+    """
+    Muestra las métricas clave del escenario financiero en st.metric cards.
+    No recalcula — muestra los valores tal como los devolvió parse_scenario().
+
+    Args:
+        escenario: dict validado devuelto por core.scenario_parser.parse_scenario().
+    """
+    ubicacion = escenario.get("ubicacion", "—")
+    st.subheader(f"📋 Escenario financiero — {ubicacion}")
+
+    utilidad = escenario.get("utilidad_neta_mes", 0.0)
+    mrc = escenario.get("meses_recuperacion_capital")
+
+    # Fila 1: ingresos, costos fijos, costos variables, utilidad neta
+    col1, col2, col3, col4 = st.columns(4)
+    with col1:
+        st.metric(
+            "💰 Ingresos estimados / mes",
+            _fmt_moneda(escenario.get("ingresos_estimados_mes", 0.0)),
+        )
+    with col2:
+        st.metric(
+            "🏢 Costos fijos / mes",
+            _fmt_moneda(escenario.get("costos_fijos_mes", 0.0)),
+        )
+    with col3:
+        st.metric(
+            "📦 Costos variables / mes",
+            _fmt_moneda(escenario.get("costos_variables_mes", 0.0)),
+        )
+    with col4:
+        color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
+        st.metric(
+            "📈 Utilidad neta / mes",
+            _fmt_moneda(utilidad),
+        )
+
+    st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+
+    # Fila 2: punto de equilibrio, recuperación, precio unitario, margen
+    col5, col6, col7, col8 = st.columns(4)
+    with col5:
+        st.metric(
+            "⚖️ Punto de equilibrio",
+            f"{escenario.get('punto_equilibrio_unidades', 0.0):.0f} unidades/mes",
+        )
+    with col6:
+        st.metric(
+            "⏱️ Recuperación del capital",
+            _fmt_meses(mrc),
+        )
+    with col7:
+        st.metric(
+            "🏷️ Precio unitario promedio",
+            _fmt_moneda(escenario.get("precio_unitario_promedio", 0.0)),
+        )
+    with col8:
+        precio = escenario.get("precio_unitario_promedio", 0.0)
+        costo_unit = escenario.get("costo_variable_unitario", 0.0)
+        margen_pct = ((precio - costo_unit) / precio * 100) if precio > 0 else 0.0
+        st.metric(
+            "📊 Margen de contribución",
+            f"{margen_pct:.1f}%",
+        )
+
+    # Alerta visual si utilidad es negativa
+    if utilidad < 0:
+        st.error(
+            "⚠️ El escenario muestra **utilidad neta negativa**. "
+            "Considera ajustar precios o reducir costos antes de abrir."
+        )
+    elif mrc is not None and mrc > 24:
+        st.warning(
+            f"⚠️ La recuperación del capital tomará **{_fmt_meses(mrc)}** — "
+            "más de 2 años. Evalúa si el capital es suficiente."
+        )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 6. render_metricas — recálculo en tiempo real con ajustes del usuario
+# ──────────────────────────────────────────────────────────────────────────────
+
+def render_metricas(escenario: dict, ajustes: dict) -> None:
+    """
+    Muestra métricas financieras recalculadas con los overrides del usuario.
+    Toda la aritmética ocurre aquí — app.py solo pasa los valores de los controles.
+
+    Args:
+        escenario: dict base devuelto por parse_scenario().
+        ajustes: dict con claves opcionales que sobreescriben el escenario base:
+            - "ingresos_estimados_mes": float
+            - "costos_fijos_mes": float
+            - "costos_variables_mes": float
+            - "precio_unitario_promedio": float
+    """
+    # Aplicar overrides encima del escenario base
+    ingresos = float(ajustes.get("ingresos_estimados_mes",
+                                  escenario.get("ingresos_estimados_mes", 0.0)))
+    fijos = float(ajustes.get("costos_fijos_mes",
+                               escenario.get("costos_fijos_mes", 0.0)))
+    variables = float(ajustes.get("costos_variables_mes",
+                                   escenario.get("costos_variables_mes", 0.0)))
+    precio = float(ajustes.get("precio_unitario_promedio",
+                                escenario.get("precio_unitario_promedio", 0.0)))
+
+    costo_unit = escenario.get("costo_variable_unitario", 0.0)
+    capital = escenario.get("capital", 0.0)
+
+    # Recálculo
+    utilidad = ingresos - fijos - variables
+    margen_contrib = precio - costo_unit
+    pe_unidades = (fijos / margen_contrib) if margen_contrib > 0 else None
+    mrc = (capital / utilidad) if utilidad > 0 else None
+    margen_pct = (margen_contrib / precio * 100) if precio > 0 else 0.0
+
+    st.markdown(
+        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;'
+        'padding:20px 24px;margin-top:8px;">'
+        '<div style="font-weight:700;color:#0f172a;font-size:0.95rem;margin-bottom:14px;">'
+        '🔄 Métricas recalculadas con tus ajustes</div>',
+        unsafe_allow_html=True,
+    )
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        base_utilidad = escenario.get("utilidad_neta_mes", 0.0)
+        delta_utilidad = utilidad - base_utilidad
+        st.metric(
+            "Utilidad neta / mes",
+            _fmt_moneda(utilidad),
+            delta=f"{'+' if delta_utilidad >= 0 else ''}{_fmt_moneda(delta_utilidad)}",
+        )
+    with c2:
+        st.metric(
+            "Punto de equilibrio",
+            f"{pe_unidades:.0f} u/mes" if pe_unidades is not None else "N/A",
+        )
+    with c3:
+        st.metric(
+            "Recuperación del capital",
+            _fmt_meses(mrc),
+        )
+    with c4:
+        st.metric(
+            "Margen de contribución",
+            f"{margen_pct:.1f}%",
+        )
+
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if utilidad < 0:
+        st.error("⚠️ Con estos ajustes la utilidad es **negativa**.")
+    elif utilidad == 0:
+        st.warning("⚖️ Con estos ajustes el negocio **solo cubre costos** — sin utilidad.")
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 7. render_foda — cuatro columnas HTML/CSS con las listas del FODA
+# ──────────────────────────────────────────────────────────────────────────────
+
+def render_foda(foda: dict) -> None:
+    """
+    Renderiza el análisis FODA en cuatro columnas con el mismo estilo de cards
+    que render_recomendacion().
+
+    Args:
+        foda: dict con claves 'fortalezas', 'oportunidades', 'debilidades', 'amenazas'.
+             Cada valor es una lista de strings.
+    """
+    st.subheader("🔍 Análisis FODA")
+
+    columnas_html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:8px;">'
+
+    for clave, meta in _FODA_META.items():
+        items = foda.get(clave, [])
+        color = meta["color"]
+        bg = meta["bg"]
+        emoji = meta["emoji"]
+        label = meta["label"]
+
+        # Lista de items como bullets estilizados
+        items_html = "".join(
+            f'<li style="margin-bottom:6px;color:#374151;font-size:0.85rem;line-height:1.5;">'
+            f'{item}</li>'
+            for item in items
+        ) or '<li style="color:#94a3b8;font-size:0.85rem;">Sin datos</li>'
+
+        columnas_html += (
+            f'<div style="background:#ffffff;border-radius:14px;'
+            f'border:1px solid {color}44;'
+            f'box-shadow:0 2px 8px rgba(0,0,0,0.05);padding:18px;">'
+            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
+            f'<span style="display:inline-flex;align-items:center;justify-content:center;'
+            f'width:32px;height:32px;background:{bg};border-radius:8px;font-size:1rem;">'
+            f'{emoji}</span>'
+            f'<span style="font-weight:700;font-size:0.9rem;color:{color};">{label}</span>'
+            f'</div>'
+            f'<ul style="margin:0;padding-left:16px;">{items_html}</ul>'
+            f'</div>'
+        )
+
+    columnas_html += "</div>"
+    st.markdown(columnas_html, unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 8. render_deuda — amortización francesa + métricas actualizadas con deuda
+# ──────────────────────────────────────────────────────────────────────────────
+
+def render_deuda(escenario: dict, deuda: dict) -> None:
+    """
+    Calcula el pago mensual con amortización francesa y muestra métricas
+    financieras actualizadas considerando el servicio de deuda.
+
+    Args:
+        escenario: dict base de parse_scenario().
+        deuda: dict con:
+            - "monto": float  — monto del crédito en MXN
+            - "tasa_anual": float  — tasa de interés anual en % (ej. 18.0)
+            - "plazo_meses": int  — número de mensualidades
+
+    Fórmula de amortización francesa:
+        pago = monto * (r * (1 + r)^n) / ((1 + r)^n - 1)
+        donde r = tasa_anual / 12 / 100  y  n = plazo_meses
+    """
+    st.subheader("🏦 Escenario con financiamiento")
+
+    monto = float(deuda.get("monto", 0.0))
+    tasa_anual = float(deuda.get("tasa_anual", 0.0))
+    plazo = int(deuda.get("plazo_meses", 1))
+
+    # ── Cálculo de amortización francesa ────────────────────────────────────
+    if plazo < 1:
+        plazo = 1
+
+    r = tasa_anual / 12.0 / 100.0  # tasa mensual como decimal
+
+    if r == 0.0:
+        # Sin interés: pago lineal
+        pago_mensual = monto / plazo
+    else:
+        factor = (1 + r) ** plazo
+        pago_mensual = monto * (r * factor) / (factor - 1)
+
+    total_pagado = pago_mensual * plazo
+    total_intereses = total_pagado - monto
+
+    # ── Métricas con deuda ───────────────────────────────────────────────────
+    ingresos = escenario.get("ingresos_estimados_mes", 0.0)
+    fijos = escenario.get("costos_fijos_mes", 0.0)
+    variables = escenario.get("costos_variables_mes", 0.0)
+    capital = escenario.get("capital", 0.0)
+
+    utilidad_sin_deuda = ingresos - fijos - variables
+    utilidad_con_deuda = utilidad_sin_deuda - pago_mensual
+    mrc_con_deuda = (capital / utilidad_con_deuda) if utilidad_con_deuda > 0 else None
+
+    # ── Resumen del crédito ──────────────────────────────────────────────────
+    st.markdown(
+        f'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;'
+        f'padding:18px 24px;margin-bottom:16px;">'
+        f'<div style="font-weight:700;color:#0f172a;font-size:0.9rem;margin-bottom:10px;">'
+        f'📄 Resumen del crédito</div>'
+        f'<div style="display:flex;flex-wrap:wrap;gap:24px;">'
+        f'<div><div style="font-size:0.75rem;color:#64748b;">Monto solicitado</div>'
+        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{_fmt_moneda(monto)}</div></div>'
+        f'<div><div style="font-size:0.75rem;color:#64748b;">Tasa anual</div>'
+        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{tasa_anual:.2f}%</div></div>'
+        f'<div><div style="font-size:0.75rem;color:#64748b;">Plazo</div>'
+        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{plazo} meses</div></div>'
+        f'<div><div style="font-size:0.75rem;color:#64748b;">Pago mensual</div>'
+        f'<div style="font-weight:700;font-size:1rem;color:#2563eb;">{_fmt_moneda(pago_mensual)}</div></div>'
+        f'<div><div style="font-size:0.75rem;color:#64748b;">Total intereses</div>'
+        f'<div style="font-weight:700;font-size:1rem;color:#d97706;">{_fmt_moneda(total_intereses)}</div></div>'
+        f'<div><div style="font-size:0.75rem;color:#64748b;">Total a pagar</div>'
+        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{_fmt_moneda(total_pagado)}</div></div>'
+        f'</div></div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── Impacto en utilidad ──────────────────────────────────────────────────
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.metric(
+            "Utilidad sin deuda / mes",
+            _fmt_moneda(utilidad_sin_deuda),
+        )
+    with c2:
+        delta_val = utilidad_con_deuda - utilidad_sin_deuda
+        st.metric(
+            "Utilidad con deuda / mes",
+            _fmt_moneda(utilidad_con_deuda),
+            delta=f"{_fmt_moneda(delta_val)}",
+        )
+    with c3:
+        st.metric(
+            "Recuperación con deuda",
+            _fmt_meses(mrc_con_deuda),
+        )
+
+    if utilidad_con_deuda < 0:
+        st.error(
+            "⚠️ El pago mensual de la deuda hace que la utilidad sea **negativa**. "
+            "Considera un monto menor, plazo mayor o reducir costos."
+        )
+    elif pago_mensual > utilidad_sin_deuda * 0.4:
+        st.warning(
+            f"⚠️ El pago mensual ({_fmt_moneda(pago_mensual)}) representa más del 40 % "
+            "de la utilidad — nivel de deuda alto."
+        )

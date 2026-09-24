@@ -2,7 +2,20 @@ import streamlit as st
 
 from ai.gemini_client import get_locations
 from core.parser import parse_response
-from ui.components import render_tabla, render_grafico, render_recomendacion
+from ui.components import (
+    render_tabla,
+    render_grafico,
+    render_recomendacion,
+    # Fase 2
+    render_escenario,
+    render_metricas,
+    render_foda,
+    render_deuda,
+)
+
+# Fase 2 — imports de scenario (no afectan Fase 1 si el módulo existe)
+from ai.scenario_client import get_scenario
+from core.scenario_parser import parse_scenario
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuración de página
@@ -127,7 +140,7 @@ st.markdown(
 )
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Formulario de entrada
+# Formulario de entrada (Fase 1)
 # ──────────────────────────────────────────────────────────────────────────────
 with st.form("form_negocio"):
     col1, col2, col3 = st.columns(3)
@@ -140,7 +153,8 @@ with st.form("form_negocio"):
     submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Lógica de análisis — sin cambios funcionales
+# Procesamiento de Fase 1 — guarda resultados en session_state para que
+# persistan a través de todos los re-renders posteriores (Fase 2, botones, etc.)
 # ──────────────────────────────────────────────────────────────────────────────
 if submitted:
     errores = []
@@ -169,11 +183,235 @@ if submitted:
                 st.error(f"❌ Error inesperado: {e}")
                 st.stop()
 
-        st.success(f"Análisis completado para **{ciudad.strip()}** — {len(ubicaciones)} ubicaciones evaluadas.")
+        # Persistir resultados y contexto del negocio
+        st.session_state["ubicaciones"] = ubicaciones
+        st.session_state["giro"] = giro.strip()
+        st.session_state["capital"] = capital
+        st.session_state["ciudad"] = ciudad.strip()
+
+        # Limpiar estado de Fase 2 si el usuario hace un nuevo análisis
+        for key in ("escenario", "ubicacion_elegida", "mostrar_ajustes",
+                    "mostrar_foda", "mostrar_deuda"):
+            st.session_state.pop(key, None)
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Resultados de Fase 1 — se muestran mientras haya ubicaciones en session_state
+# Esto garantiza que el contenido no desaparezca cuando el usuario interactúa
+# con los widgets de Fase 2 (cada interacción re-ejecuta el script completo).
+# ──────────────────────────────────────────────────────────────────────────────
+if "ubicaciones" in st.session_state:
+    _ubs = st.session_state["ubicaciones"]
+    _ciudad = st.session_state.get("ciudad", "")
+
+    st.success(f"Análisis completado para **{_ciudad}** — {len(_ubs)} ubicaciones evaluadas.")
+
+    st.markdown("<hr>", unsafe_allow_html=True)
+    render_tabla(_ubs)
+    st.markdown("<hr>", unsafe_allow_html=True)
+    render_grafico(_ubs)
+    st.markdown("<hr>", unsafe_allow_html=True)
+    render_recomendacion(_ubs)
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # FASE 2 — Selector de ubicación
+    # Está fuera del bloque if submitted para que persista entre re-renders.
+    # ──────────────────────────────────────────────────────────────────────────
+    st.markdown("<hr>", unsafe_allow_html=True)
+    st.markdown(
+        """
+        <div style="padding:20px 0 8px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:1.4rem;">🎯</span>
+            <h2 style="margin:0;font-size:1.3rem;font-weight:800;color:#0f172a;">
+              Fase 2 — Análisis financiero detallado
+            </h2>
+          </div>
+          <p style="margin:6px 0 0;color:#64748b;font-size:0.9rem;padding-left:38px;">
+            Elige la ubicación que más te convence y genera su escenario financiero completo.
+          </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Opciones del selector: nombre de cada ubicación
+    opciones = [u.get("nombre", f"Ubicación {i+1}") for i, u in enumerate(_ubs)]
+
+    # Mantener la selección previa si ya existía
+    idx_previo = 0
+    if "ubicacion_elegida" in st.session_state:
+        nombre_previo = st.session_state["ubicacion_elegida"]
+        if nombre_previo in opciones:
+            idx_previo = opciones.index(nombre_previo)
+
+    seleccion = st.selectbox(
+        "Selecciona la ubicación para analizar en detalle:",
+        options=opciones,
+        index=idx_previo,
+        key="selectbox_ubicacion",
+    )
+
+    # Botón de confirmación — fuera de st.form para no forzar re-run del form
+    confirmar = st.button(
+        "✅ Confirmar ubicación y generar escenario",
+        type="primary",
+        use_container_width=False,
+    )
+
+    if confirmar:
+        st.session_state["ubicacion_elegida"] = seleccion
+        # Limpiar estado derivado para forzar nuevo análisis con la nueva ubicación
+        for key in ("escenario", "mostrar_ajustes", "mostrar_foda", "mostrar_deuda"):
+            st.session_state.pop(key, None)
+
+        _giro = st.session_state.get("giro", "")
+        _capital = st.session_state.get("capital", 0)
+
+        with st.spinner(f"Generando escenario financiero para {seleccion}…"):
+            try:
+                raw_escenario = get_scenario(_giro, float(_capital), _ciudad, seleccion)
+                escenario_parsed = parse_scenario(raw_escenario)
+            except EnvironmentError as e:
+                st.error(f"⚠️ Configuración faltante: {e}")
+                st.stop()
+            except RuntimeError as e:
+                st.error(f"🌐 Error al contactar la IA (escenario): {e}")
+                st.stop()
+            except ValueError as e:
+                st.error(f"📋 Error al procesar el escenario: {e}")
+                st.stop()
+            except Exception as e:
+                st.error(f"❌ Error inesperado al generar escenario: {e}")
+                st.stop()
+
+        st.session_state["escenario"] = escenario_parsed
+
+    # ── Mostrar escenario si ya fue generado ──────────────────────────────────
+    if "escenario" in st.session_state:
+        _escenario = st.session_state["escenario"]
 
         st.markdown("<hr>", unsafe_allow_html=True)
-        render_tabla(ubicaciones)
-        st.markdown("<hr>", unsafe_allow_html=True)
-        render_grafico(ubicaciones)
-        st.markdown("<hr>", unsafe_allow_html=True)
-        render_recomendacion(ubicaciones)
+        render_escenario(_escenario)
+
+        # ── Botón: Ajustar escenario ─────────────────────────────────────────
+        st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+        if st.button("✏️ Ajustar escenario", key="btn_ajustes"):
+            st.session_state["mostrar_ajustes"] = not st.session_state.get(
+                "mostrar_ajustes", False
+            )
+
+        if st.session_state.get("mostrar_ajustes", False):
+            st.markdown(
+                '<div style="background:#f8fafc;border:1px solid #e2e8f0;'
+                'border-radius:12px;padding:20px 24px;margin-top:8px;">',
+                unsafe_allow_html=True,
+            )
+            st.markdown("**⚙️ Ajusta las variables del escenario**", unsafe_allow_html=False)
+
+            # Controles fuera de st.form → recálculo inmediato en cada cambio
+            aj_col1, aj_col2, aj_col3, aj_col4 = st.columns(4)
+            with aj_col1:
+                aj_ingresos = st.number_input(
+                    "Ingresos / mes (MXN)",
+                    min_value=0.0,
+                    step=1000.0,
+                    value=float(_escenario.get("ingresos_estimados_mes", 0.0)),
+                    key="aj_ingresos",
+                )
+            with aj_col2:
+                aj_fijos = st.number_input(
+                    "Costos fijos / mes (MXN)",
+                    min_value=0.0,
+                    step=500.0,
+                    value=float(_escenario.get("costos_fijos_mes", 0.0)),
+                    key="aj_fijos",
+                )
+            with aj_col3:
+                aj_variables = st.number_input(
+                    "Costos variables / mes (MXN)",
+                    min_value=0.0,
+                    step=500.0,
+                    value=float(_escenario.get("costos_variables_mes", 0.0)),
+                    key="aj_variables",
+                )
+            with aj_col4:
+                aj_precio = st.number_input(
+                    "Precio unitario promedio (MXN)",
+                    min_value=0.0,
+                    step=10.0,
+                    value=float(_escenario.get("precio_unitario_promedio", 0.0)),
+                    key="aj_precio",
+                )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
+            # Render de métricas recalculadas — se actualiza en tiempo real
+            ajustes = {
+                "ingresos_estimados_mes": aj_ingresos,
+                "costos_fijos_mes": aj_fijos,
+                "costos_variables_mes": aj_variables,
+                "precio_unitario_promedio": aj_precio,
+            }
+            render_metricas(_escenario, ajustes)
+
+        # ── Botón: FODA ───────────────────────────────────────────────────────
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+        if st.button("➕ Agregar análisis FODA", key="btn_foda"):
+            st.session_state["mostrar_foda"] = not st.session_state.get(
+                "mostrar_foda", False
+            )
+
+        if st.session_state.get("mostrar_foda", False):
+            st.markdown("<hr>", unsafe_allow_html=True)
+            foda = _escenario.get("foda", {})
+            if foda:
+                render_foda(foda)
+            else:
+                st.info("El escenario no contiene datos de FODA.")
+
+        # ── Botón: Financiamiento con deuda ───────────────────────────────────
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+        if st.button("➕ Agregar financiamiento con deuda", key="btn_deuda"):
+            st.session_state["mostrar_deuda"] = not st.session_state.get(
+                "mostrar_deuda", False
+            )
+
+        if st.session_state.get("mostrar_deuda", False):
+            st.markdown("<hr>", unsafe_allow_html=True)
+            st.markdown("**🏦 Configura el crédito**", unsafe_allow_html=False)
+
+            # Controles fuera de st.form → recálculo inmediato
+            d_col1, d_col2, d_col3 = st.columns(3)
+            with d_col1:
+                d_monto = st.number_input(
+                    "Monto del crédito (MXN)",
+                    min_value=0.0,
+                    step=5000.0,
+                    value=float(st.session_state.get("capital", 50000)),
+                    key="d_monto",
+                )
+            with d_col2:
+                d_tasa = st.number_input(
+                    "Tasa de interés anual (%)",
+                    min_value=0.0,
+                    max_value=200.0,
+                    step=0.5,
+                    value=18.0,
+                    key="d_tasa",
+                )
+            with d_col3:
+                d_plazo = st.number_input(
+                    "Plazo (meses)",
+                    min_value=1,
+                    max_value=120,
+                    step=1,
+                    value=24,
+                    key="d_plazo",
+                )
+
+            deuda = {
+                "monto": d_monto,
+                "tasa_anual": d_tasa,
+                "plazo_meses": int(d_plazo),
+            }
+            render_deuda(_escenario, deuda)
