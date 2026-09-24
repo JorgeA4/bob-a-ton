@@ -37,7 +37,7 @@ NIVEL_META_INVERTIDO = {
 }
 
 # Paleta corporativa para las 5 ubicaciones (coincide en tabla y gráfico)
-LOCATION_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"]
+LOCATION_COLORS = ["#0ea5e9", "#ec4899", "#f97316", "#8b5cf6", "#14b8a6"]
 
 MEDALLAS = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
@@ -66,7 +66,7 @@ def _badge(nivel_raw: str, puntaje: int, invertido: bool = False) -> str:
         f'background:{meta["bg"]};color:{meta["color"]};'
         f'border:1px solid {meta["color"]}33;'
         f'border-radius:6px;padding:2px 8px;font-size:0.78rem;font-weight:600;white-space:nowrap;">'
-        f'{puntaje}/10&nbsp;{meta["label"]}'
+        f'{puntaje:.0f}/10&nbsp;{meta["label"]}'
         f'</span>'
     )
 
@@ -140,8 +140,7 @@ def render_tabla(ubicaciones: list) -> None:
         color = LOCATION_COLORS[i % len(LOCATION_COLORS)]
         header_cells += (
             f'<th style="text-align:center;padding:10px 14px;min-width:150px;">'
-            f'<div style="font-weight:700;color:{color};font-size:0.9rem;margin-bottom:4px;">{nombre}</div>'
-            f'{_score_badge(total, color)}'
+            f'<div style="font-weight:700;color:{color};font-size:0.9rem;">{nombre}</div>'
             f'</th>'
         )
 
@@ -213,8 +212,9 @@ def render_grafico(ubicaciones: list) -> None:
 
         fig.add_trace(go.Bar(
             name=nombre,
-            x=criterios,
-            y=puntajes,
+            x=puntajes,
+            y=criterios,
+            orientation="h",
             marker_color=color,
             marker_line_color=color,
             marker_line_width=0,
@@ -225,26 +225,19 @@ def render_grafico(ubicaciones: list) -> None:
 
     fig.update_layout(
         barmode="group",
-        yaxis=dict(
+        xaxis=dict(
             range=[0, 10],
             title="Puntaje (1–10)",
             gridcolor="rgba(128,128,128,0.2)",
             tickfont=dict(size=11),
         ),
-        xaxis=dict(
-            tickangle=-25,
+        yaxis=dict(
             tickfont=dict(size=11),
+            autorange="reversed",
         ),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            font=dict(size=12),
-        ),
-        height=430,
-        margin=dict(t=50, b=90, l=50, r=20),
+        showlegend=False,
+        height=650,
+        margin=dict(t=50, b=50, l=130, r=20),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="-apple-system, 'Segoe UI', sans-serif"),
@@ -257,8 +250,8 @@ def render_grafico(ubicaciones: list) -> None:
     )
 
     # Línea de referencia en 7 (puntaje "bueno")
-    fig.add_hline(
-        y=7,
+    fig.add_vline(
+        x=7,
         line_dash="dot",
         line_color="#94a3b8",
         annotation_text="Umbral recomendado (7)",

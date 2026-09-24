@@ -314,7 +314,7 @@ if "ubicaciones" in st.session_state:
 
     # ── 2. Gráfico (izquierda) + Tabla (derecha) ───────────────────────────────
     st.markdown("<hr>", unsafe_allow_html=True)
-    graf_col, tabla_col = st.columns([1, 1], gap="large")
+    graf_col, tabla_col = st.columns([2, 3], gap="large")
     with graf_col:
         render_grafico(_ubs)
     with tabla_col:
