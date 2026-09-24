@@ -45,10 +45,10 @@ st.markdown(
         border-radius: 12px;
     }
 
-    /* ── Formulario: card elevada ────────────────────────────────────────── */
+    /* ── Formulario: card elevada — usa variables para dark mode ─────────── */
     [data-testid="stForm"] {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
+        background: var(--secondary-background-color);
+        border: 1px solid var(--text-color-05, rgba(128,128,128,0.2));
         border-radius: 16px;
         padding: 28px 32px !important;
         box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -95,7 +95,7 @@ st.markdown(
     /* ── Subtítulos de sección ───────────────────────────────────────────── */
     h3 {
         font-weight: 700 !important;
-        color: #0f172a !important;
+        color: var(--text-color) !important;
         margin-top: 32px !important;
     }
 
@@ -110,10 +110,10 @@ st.markdown(
         color: #3b82f6 !important;
     }
 
-    /* ── Separadores ──────────────────────────────────────────────────────── */
+    /* ── Separadores — usa variable para dark mode ────────────────────────── */
     hr {
         border: none !important;
-        border-top: 1px solid #e2e8f0 !important;
+        border-top: 1px solid rgba(128,128,128,0.25) !important;
         margin: 24px 0 !important;
     }
     </style>
@@ -126,15 +126,15 @@ st.markdown(
 # ──────────────────────────────────────────────────────────────────────────────
 st.markdown(
     """
-    <div style="padding:32px 0 24px;border-bottom:1px solid #e2e8f0;margin-bottom:28px;">
+    <div style="padding:32px 0 24px;border-bottom:1px solid rgba(128,128,128,0.25);margin-bottom:28px;">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
         <span style="font-size:2rem;">📍</span>
-        <h1 style="margin:0;font-size:1.75rem;font-weight:800;color:#0f172a;
+        <h1 style="margin:0;font-size:1.75rem;font-weight:800;color:var(--text-color);
                    font-family:-apple-system,'Segoe UI',sans-serif;">
           Analizador de ubicaciones <span style="color:#2563eb;">para tu negocio</span>
         </h1>
       </div>
-      <p style="margin:0;color:#64748b;font-size:0.95rem;padding-left:52px;">
+      <p style="margin:0;color:var(--text-color);opacity:0.6;font-size:0.95rem;padding-left:52px;">
         Ingresa los datos de tu negocio y la IA evaluará las mejores zonas de la ciudad.
       </p>
     </div>
@@ -147,11 +147,67 @@ st.markdown(
 # ──────────────────────────────────────────────────────────────────────────────
 form_col, img_col = st.columns([1, 1], gap="large")
 
+_GIROS = [
+    "Restaurante / Cafetería",
+    "Tienda de ropa",
+    "Abarrotes / Supermercado",
+    "Gimnasio",
+    "Estética / Barbería",
+    "Papelería",
+    "Farmacia",
+    "Consultorio médico",
+    "Taller mecánico",
+    "Ferretería",
+    "Zapatería",
+    "Panadería / Pastelería",
+    "Lavandería",
+    "Floristería",
+    "Librería",
+    "Joyería / Relojería",
+    "Óptica",
+    "Veterinaria",
+    "Artículos deportivos",
+    "Electrónica / Celulares",
+]
+
+_CIUDADES = [
+    "Tijuana",
+    "Mexicali",
+    "Ensenada",
+    "Ciudad de México",
+    "Guadalajara",
+    "Monterrey",
+    "Puebla",
+    "Querétaro",
+    "Cancún",
+    "León",
+    "Mérida",
+    "San Luis Potosí",
+    "Chihuahua",
+    "Aguascalientes",
+    "Hermosillo",
+    "Morelia",
+    "Toluca",
+    "Saltillo",
+    "Culiacán",
+    "Veracruz",
+]
+
 with form_col:
     with st.form("form_negocio"):
-        giro = st.text_input("Giro del negocio", placeholder="Ej. Cafetería, Taller mecánico")
+        giro = st.selectbox(
+            "Giro del negocio",
+            options=_GIROS,
+            index=None,
+            placeholder="Escribe o selecciona...",
+        )
         capital = st.number_input("Capital inicial (MXN)", min_value=1, step=5000, value=100000)
-        ciudad = st.text_input("Ciudad", placeholder="Ej. Guadalajara, CDMX")
+        ciudad = st.selectbox(
+            "Ciudad",
+            options=_CIUDADES,
+            index=None,
+            placeholder="Escribe o selecciona...",
+        )
         zona_preferida = st.text_input(
             "Zona de interés (opcional)",
             placeholder="Ej. Zona Río, Centro Histórico",
@@ -164,8 +220,8 @@ with img_col:
         """
         <div style="
             height:220px;
-            background:linear-gradient(135deg,#dbeafe 0%,#ede9fe 100%);
-            border:2px dashed #93c5fd;
+            background:var(--secondary-background-color);
+            border:2px dashed rgba(59,130,246,0.5);
             border-radius:16px;
             display:flex;
             flex-direction:column;
@@ -175,8 +231,8 @@ with img_col:
             color:#3b82f6;
         ">
             <span style="font-size:3rem;">🗺️</span>
-            <span style="font-weight:600;font-size:0.95rem;">Imagen orientativa</span>
-            <span style="font-size:0.8rem;color:#94a3b8;">placeholder</span>
+            <span style="font-weight:600;font-size:0.95rem;color:var(--text-color);">Imagen orientativa</span>
+            <span style="font-size:0.8rem;color:var(--text-color);opacity:0.5;">placeholder</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -205,9 +261,9 @@ if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
 # ──────────────────────────────────────────────────────────────────────────────
 if submitted:
     errores = []
-    if not giro.strip():
+    if not giro:
         errores.append("El campo **Giro del negocio** es obligatorio.")
-    if not ciudad.strip():
+    if not ciudad:
         errores.append("El campo **Ciudad** es obligatorio.")
     if capital <= 0:
         errores.append("El **capital** debe ser mayor a 0.")
@@ -218,7 +274,7 @@ if submitted:
     else:
         with st.spinner("Consultando a la IA… esto puede tardar unos segundos."):
             try:
-                raw_json = get_locations(giro.strip(), capital, ciudad.strip(), zona_preferida.strip())
+                raw_json = get_locations(str(giro), capital, str(ciudad), zona_preferida.strip())
                 ubicaciones = parse_response(raw_json)
             except EnvironmentError as e:
                 st.error(f"⚠️ Configuración faltante: {e}")
@@ -274,11 +330,11 @@ if "ubicaciones" in st.session_state:
         <div style="padding:20px 0 8px;">
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:1.4rem;">🎯</span>
-            <h2 style="margin:0;font-size:1.3rem;font-weight:800;color:#0f172a;">
+            <h2 style="margin:0;font-size:1.3rem;font-weight:800;color:var(--text-color);">
               Fase 2 — Análisis financiero detallado
             </h2>
           </div>
-          <p style="margin:6px 0 0;color:#64748b;font-size:0.9rem;padding-left:38px;">
+          <p style="margin:6px 0 0;color:var(--text-color);opacity:0.6;font-size:0.9rem;padding-left:38px;">
             Elige la ubicación que más te convence y genera su escenario financiero completo.
           </p>
         </div>
@@ -357,7 +413,8 @@ if "ubicaciones" in st.session_state:
 
         if st.session_state.get("mostrar_ajustes", False):
             st.markdown(
-                '<div style="background:#f8fafc;border:1px solid #e2e8f0;'
+                '<div style="background:var(--secondary-background-color);'
+                'border:1px solid rgba(128,128,128,0.25);'
                 'border-radius:12px;padding:20px 24px;margin-top:8px;">',
                 unsafe_allow_html=True,
             )
@@ -411,25 +468,25 @@ if "ubicaciones" in st.session_state:
 
         # ── Botón: FODA ───────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Agregar análisis FODA", key="btn_foda"):
-            st.session_state["mostrar_foda"] = not st.session_state.get(
-                "mostrar_foda", False
-            )
+        _foda_abierto = st.session_state.get("mostrar_foda", False)
+        _foda_icono = "➖" if _foda_abierto else "➕"
+        if st.button(f"{_foda_icono} Agregar análisis FODA", key="btn_foda"):
+            st.session_state["mostrar_foda"] = not _foda_abierto
 
         if st.session_state.get("mostrar_foda", False):
             st.markdown("<hr>", unsafe_allow_html=True)
-            foda = _escenario.get("foda", {})
-            if foda:
-                render_foda(foda)
+            foda_base = _escenario.get("foda", {})
+            if foda_base:
+                render_foda(foda_base)
             else:
                 st.info("El escenario no contiene datos de FODA.")
 
         # ── Botón: Financiamiento con deuda ───────────────────────────────────
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-        if st.button("➕ Agregar financiamiento con deuda", key="btn_deuda"):
-            st.session_state["mostrar_deuda"] = not st.session_state.get(
-                "mostrar_deuda", False
-            )
+        _deuda_abierta = st.session_state.get("mostrar_deuda", False)
+        _deuda_icono = "➖" if _deuda_abierta else "➕"
+        if st.button(f"{_deuda_icono} Agregar financiamiento con deuda", key="btn_deuda"):
+            st.session_state["mostrar_deuda"] = not _deuda_abierta
 
         if st.session_state.get("mostrar_deuda", False):
             st.markdown("<hr>", unsafe_allow_html=True)
