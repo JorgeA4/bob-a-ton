@@ -29,12 +29,45 @@ Datos del negocio:
 - Capital inicial: {capital} MXN
 - Ciudad: {ciudad}
 {instruccion_zona}
-Instrucciones:
+═══════════════════════════════════════════════════════════
+REGLA CRÍTICA DE FORMATO — SIN EXCEPCIONES:
+Tu respuesta debe ser EXCLUSIVAMENTE un objeto JSON válido.
+- El PRIMER carácter de tu respuesta debe ser el carácter {{
+- El ÚLTIMO carácter de tu respuesta debe ser el carácter }}
+- CERO texto antes del {{, CERO texto después del }}
+- CERO bloques markdown, CERO explicaciones, CERO comentarios dentro del JSON
+- CERO comas finales después del último elemento de un objeto o array
+- Todos los strings deben usar comillas dobles (" "), nunca comillas simples
+- No uses caracteres de control ni saltos de línea dentro de strings
+═══════════════════════════════════════════════════════════
+
+CLASIFICACIÓN DEL GIRO — sigue este orden de decisión:
+
+1. GIRO INAPROPIADO / NO ANALIZABLE: Si el giro corresponde a actividades ilegales,
+   inmorales o que no son negocios formales legítimos (ejemplos: prostíbulo, burdel,
+   casa de citas, narcotráfico, sicariato, casino ilegal, lavado de dinero, etc.),
+   devuelve INMEDIATAMENTE y ÚNICAMENTE este JSON:
+   {{"error": "giro_no_reconocido", "mensaje": "Este giro no puede analizarse porque corresponde a una actividad ilegal o no es un negocio formal legítimo."}}
+
+2. GIRO DE ALIMENTOS / ESPECIALIDAD CULINARIA: Si el giro menciona un tipo de comida
+   o especialidad gastronómica (ejemplos: "comida china", "tacos de canasta", "pizza",
+   "sushi", "mariscos", "hamburguesas", "comida italiana", "marisquería"), trátalo como
+   un negocio de RESTAURANTE o FONDA y analízalo normalmente con las 5 ubicaciones.
+
+3. GIRO AMBIGUO PERO INTERPRETABLE: Si el giro no es completamente claro pero puede
+   asociarse a un tipo de negocio razonable, interpreta la intención más probable y
+   analízalo normalmente.
+
+4. GIRO ININTERPRETABLE: Solo si el texto es completamente ilegible, sin sentido
+   absoluto, o un conjunto de caracteres aleatorios que no corresponden a ningún
+   negocio posible, devuelve ÚNICAMENTE:
+   {{"error": "giro_no_reconocido", "mensaje": "El texto ingresado no corresponde a ningún tipo de negocio reconocible."}}
+
+Instrucciones para el análisis normal (casos 2, 3 y 4 cuando aplica análisis):
 1. Identifica 5 zonas o colonias REALES y representativas dentro de {ciudad} para este tipo de negocio.
 2. Evalúa cada zona con los 9 criterios definidos (puntaje 1–10, donde 10 es la mejor condición).
 3. Calcula el puntaje_total como la suma exacta de los 9 puntajes individuales.
 4. Incluye una recomendacion_ia breve y accionable por ubicación.
-5. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin texto antes, sin texto después, sin bloques markdown, sin explicaciones.
 
 Los 9 criterios (claves JSON exactas):
 - costo_renta: costo mensual estimado vs el capital disponible (10 = muy accesible)
@@ -47,7 +80,7 @@ Los 9 criterios (claves JSON exactas):
 - visibilidad_local: exposición del local hacia la calle o zonas de alto tráfico (10 = máxima visibilidad)
 - compatibilidad_capital: capital requerido para abrir en esa zona vs el capital disponible (10 = zona muy barata de arrancar, el capital sobra; 1 = zona requiere mucho más capital del disponible)
 
-Estructura exacta del JSON a devolver (caso normal):
+Estructura exacta del JSON a devolver (análisis normal):
 {{
   "ciudad": "{ciudad}",
   "giro": "{giro}",
@@ -58,25 +91,21 @@ Estructura exacta del JSON a devolver (caso normal):
       "nombre": "nombre real de la colonia o zona",
       "descripcion_breve": "1 o 2 oraciones describiendo la zona en contexto del negocio",
       "criterios": {{
-        "costo_renta": {{"puntaje": 1, "nota": "estimación concreta"}},
-        "flujo_peatonal": {{"puntaje": 1, "nota": "descripción del flujo"}},
-        "accesibilidad_transporte": {{"puntaje": 1, "nota": "medios disponibles"}},
-        "nivel_competencia": {{"puntaje": 1, "nota": "competencia directa"}},
-        "afinidad_con_giro": {{"puntaje": 1, "nota": "perfil de la zona"}},
-        "seguridad_zona": {{"puntaje": 1, "nota": "contexto de seguridad"}},
-        "potencial_crecimiento": {{"puntaje": 1, "nota": "tendencia urbana"}},
-        "visibilidad_local": {{"puntaje": 1, "nota": "exposición comercial"}},
-        "compatibilidad_capital": {{"puntaje": 1, "nota": "estimación de arranque"}}
+        "costo_renta": {{"puntaje": 7, "nota": "estimación concreta"}},
+        "flujo_peatonal": {{"puntaje": 8, "nota": "descripción del flujo"}},
+        "accesibilidad_transporte": {{"puntaje": 6, "nota": "medios disponibles"}},
+        "nivel_competencia": {{"puntaje": 5, "nota": "competencia directa"}},
+        "afinidad_con_giro": {{"puntaje": 9, "nota": "perfil de la zona"}},
+        "seguridad_zona": {{"puntaje": 7, "nota": "contexto de seguridad"}},
+        "potencial_crecimiento": {{"puntaje": 8, "nota": "tendencia urbana"}},
+        "visibilidad_local": {{"puntaje": 6, "nota": "exposición comercial"}},
+        "compatibilidad_capital": {{"puntaje": 7, "nota": "estimación de arranque"}}
       }},
-      "puntaje_total": 0,
+      "puntaje_total": 63,
       "recomendacion_ia": "2 o 3 oraciones con recomendación accionable considerando el capital"
     }}
   ]
 }}
-
-Si el giro del negocio es ininterpretable, ilegible o no corresponde a ningún tipo de negocio real,
-NO inventes ubicaciones. Devuelve ÚNICAMENTE este JSON alternativo:
-{{"error": "giro_no_reconocido", "mensaje": "explicación breve en español de por qué no se pudo interpretar"}}
 
 Reglas de calidad:
 - Usa nombres REALES de colonias de {ciudad}, nunca genéricos como "zona norte".
@@ -85,4 +114,5 @@ Reglas de calidad:
 - Ajusta los puntajes según la lógica del giro (ej. taller mecánico necesita acceso vehicular, no flujo peatonal).
 - puntaje_total debe ser la suma aritmética exacta de los 9 puntajes.
 - JSON válido siempre: sin comas finales, sin comentarios, sin texto fuera del JSON.
+- RECUERDA: primera respuesta = carácter {{, última respuesta = carácter }}. Nada más.
 """
