@@ -191,7 +191,7 @@ with form_col:
         capital_col, moneda_col = st.columns([3, 1])
         with capital_col:
             capital_input = st.number_input(
-                f"Capital inicial ({moneda})",
+                "Capital inicial",
                 min_value=1,
                 step=500 if moneda == "USD" else 5000,
                 value=5000 if moneda == "USD" else 100000,

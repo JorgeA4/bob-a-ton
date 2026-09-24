@@ -918,7 +918,39 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
     pct_mes1      = min(90.0, max(5.0, base_pct * factores["pct_factor"]))
 
     k = _curva_params(meses_madurez, pct_mes1)
-    n_meses = meses_madurez + 6   # buffer de 6 meses post-madurez
+    _HORIZONTE_MAX = 60  # tope absoluto en meses
+
+    # ── Paso 1: calcular KPIs sin límite de horizonte (hasta 60 m) ───────────
+    _n_calculo = min(_HORIZONTE_MAX, meses_madurez + 6)
+    # Extendemos temporalmente hasta el tope para encontrar mes_recuperacion
+    _meses_calc   = list(range(1, _HORIZONTE_MAX + 1))
+    _utilidad_calc = [
+        _flujo_mensual(t, ventas_maduras, costos_totales, k, pct_mes1)[1]
+        for t in _meses_calc
+    ]
+
+    mes_breakeven = next((t for t, u in zip(_meses_calc, _utilidad_calc) if u >= 0), None)
+
+    if mes_breakeven is not None:
+        capital_quemado = abs(sum(u for u in _utilidad_calc[:mes_breakeven - 1] if u < 0))
+    else:
+        capital_quemado = abs(sum(u for u in _utilidad_calc if u < 0))
+
+    flujo_acumulado = 0.0
+    mes_recuperacion = None
+    for t, u in zip(_meses_calc, _utilidad_calc):
+        flujo_acumulado += u
+        if flujo_acumulado >= capital and mes_recuperacion is None:
+            mes_recuperacion = t
+
+    # ── Paso 2: fijar horizonte de la gráfica ────────────────────────────────
+    # Si la recuperación ocurre antes del tope, extender hasta ahí + 2 meses
+    # de margen visual. Si no ocurre, usar el horizonte base topado en 60.
+    _horizonte_base = meses_madurez + 6
+    if mes_recuperacion is not None:
+        n_meses = min(_HORIZONTE_MAX, max(_horizonte_base, mes_recuperacion + 2))
+    else:
+        n_meses = min(_HORIZONTE_MAX, _horizonte_base)
 
     meses      = list(range(1, n_meses + 1))
     ingresos_v = []
@@ -929,24 +961,6 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
         utilidad_v.append(util)
 
     costos_v = [costos_totales] * n_meses
-
-    # ── KPIs derivados ────────────────────────────────────────────────────────
-    # 1. Mes de break-even real
-    mes_breakeven = next((t for t, u in zip(meses, utilidad_v) if u >= 0), None)
-
-    # 2. Capital quemado antes del break-even
-    if mes_breakeven is not None:
-        capital_quemado = abs(sum(u for u in utilidad_v[:mes_breakeven - 1] if u < 0))
-    else:
-        capital_quemado = abs(sum(u for u in utilidad_v if u < 0))
-
-    # 3. Recuperación de inversión sobre flujo acumulado
-    flujo_acumulado = 0.0
-    mes_recuperacion = None
-    for t, u in zip(meses, utilidad_v):
-        flujo_acumulado += u
-        if flujo_acumulado >= capital and mes_recuperacion is None:
-            mes_recuperacion = t
 
     # ── Gráfica Plotly ────────────────────────────────────────────────────────
     fig = go.Figure()
@@ -1003,6 +1017,18 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
             annotation_position="top right",
             annotation_font_size=11,
             annotation_font_color=_COLOR_POSITIVO,
+        )
+
+    # Línea vertical de recuperación de inversión (si cae dentro del horizonte)
+    if mes_recuperacion is not None and mes_recuperacion <= n_meses:
+        fig.add_vline(
+            x=mes_recuperacion,
+            line_dash="dash",
+            line_color=_COLOR_NEUTRO,
+            annotation_text=f"Recuperación: mes {mes_recuperacion}",
+            annotation_position="bottom right",
+            annotation_font_size=11,
+            annotation_font_color=_COLOR_NEUTRO,
         )
 
     meta_activa = _ESCENARIO_META[escenario_activo]
@@ -1070,14 +1096,16 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
         if mes_recuperacion is not None:
             rec_color = _COLOR_POSITIVO if mes_recuperacion <= 24 else _COLOR_ADVERTENCIA
             rec_texto = f"Mes {mes_recuperacion}"
+            rec_sub = "Flujo acumulado real" + (" · deuda incluida" if con_deuda else "")
         else:
             rec_color = _COLOR_NEGATIVO
-            rec_texto = "Fuera del horizonte"
+            rec_texto = "> 60 meses"
+            rec_sub = "No se recupera dentro del horizonte máximo proyectado"
         st.markdown(
             _kpi_card(
                 "💰", "Recuperación real de inversión",
                 rec_texto, rec_color,
-                subtitulo="Flujo acumulado real" + (f" · deuda incluida" if con_deuda else ""),
+                subtitulo=rec_sub,
             ),
             unsafe_allow_html=True,
         )
@@ -1100,10 +1128,15 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
             f"⚠️ En el escenario **{meta_activa['label']}**, el negocio tardará **{mes_breakeven} meses** "
             "en ser rentable. Asegúrate de tener reservas suficientes para ese período."
         )
+    elif mes_recuperacion is None:
+        st.warning(
+            f"⚠️ En el escenario **{meta_activa['label']}**, el negocio alcanza el break-even en el "
+            f"**mes {mes_breakeven}** pero no recupera la inversión completa en los primeros 60 meses proyectados."
+        )
     else:
         st.success(
             f"✅ En el escenario **{meta_activa['label']}**, el negocio alcanza el break-even en el "
-            f"**mes {mes_breakeven}** y recupera la inversión completa en el **mes {mes_recuperacion or '?'}**."
+            f"**mes {mes_breakeven}** y recupera la inversión completa en el **mes {mes_recuperacion}**."
         )
 
     # ── Nota de supuestos ─────────────────────────────────────────────────────
