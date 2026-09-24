@@ -70,23 +70,27 @@ streamlit run app.py
 | `escenario` | `dict` | Parsed scenario from `parse_scenario()` — includes `madurez` and `foda` sub-dicts |
 | `modo_edicion_escenario` | `bool` | Toggle for inline edit mode in the P&L (replaces the old separate adjust panel) |
 | `mostrar_foda` | `bool` | Toggle for the FODA panel |
-| `mostrar_deuda` | `bool` | Toggle for the debt-financing panel |
+| `mostrar_deuda` | `bool` | Toggle for the debt-financing panel; auto-set to `True` when `inversion_inicial > capital` |
 | `escenario_madurez` | `str` | Active maturity scenario: `"pesimista"`, `"moderado"`, or `"optimista"` (default `"moderado"`) |
 | `_moneda_form` | `str` | Currency selected in the form radio (`"MXN"` or `"USD"`); managed by Streamlit widget state |
+| `_deuda_sugerida` | `float` | Transient key — pre-fills debt amount input with `inversion_inicial − capital` when debt is auto-activated; consumed (popped) on first render |
 
 Notes:
 - `foda` and `deuda` are **not** standalone session_state keys. FODA data lives inside `escenario["foda"]`; debt inputs are built inline in `app.py` and passed as a `deuda` dict directly to `render_madurez()`.
 - All Phase 2 toggle keys (`modo_edicion_escenario`, `mostrar_foda`, `mostrar_deuda`) are cleared whenever a new Phase 1 analysis is submitted or a new location is confirmed.
 - `escenario_madurez` persists between re-renders — it is NOT cleared on new analysis (the user's scenario selection is intentional). Clear it manually if needed.
+- When a new scenario is generated, if `inversion_inicial > capital` the debt panel opens automatically with the shortfall pre-filled in `_deuda_sugerida`. `_deuda_sugerida` is a one-shot key — it is popped on the first render so subsequent user edits to the amount are not overwritten.
 
 ## Phase 2 financial metrics (computed in frontend, no AI call)
 
-- Gemini returns `ingresos_estimados_mes`, `desglose_fijos` (list), `desglose_variables` (list), `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario`, `madurez` (object). `costos_fijos_mes` and `costos_variables_mes` are **computed by `parse_scenario()`** by summing the respective breakdown lists — Gemini never sends them.
-- The adjust panel is inline in `render_escenario()` (toggle via `modo_edicion_escenario` session state key); viability KPIs recalculate in real time with the edited values. `render_escenario()` returns a dict of active values (base or user-adjusted) that is passed to `render_madurez()`.
+- Gemini returns `ingresos_estimados_mes`, `inversion_inicial`, `desglose_fijos` (list), `desglose_variables` (list), `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario`, `madurez` (object). `costos_fijos_mes` and `costos_variables_mes` are **computed by `parse_scenario()`** by summing the respective breakdown lists — Gemini never sends them.
+- The adjust panel is inline in `render_escenario()` (toggle via `modo_edicion_escenario` session state key); viability KPIs recalculate in real time with the edited values. `render_escenario()` returns a dict of active values (base or user-adjusted) that is passed to `render_madurez()`. The returned dict includes `"inversion_inicial"` so edits propagate to the maturity curve.
+- `render_escenario()` edit mode exposes `inversion_inicial` as an editable `number_input` (key `"escenario_inversion"`). Changing it updates the recovery threshold in `render_madurez()` and may trigger or dismiss the auto-debt warning.
 - `render_escenario()` viability block shows two KPIs only: **Margen de contribución** and **Punto de equilibrio**. Recovery is intentionally omitted here — it lives exclusively in the maturity curve.
 - French amortisation formula lives in `_calcular_pago_mensual(monto, tasa_anual, plazo_meses) → (pago_mensual, total_pagado, total_intereses)` — a pure helper with no Streamlit calls. `render_deuda()` no longer exists.
-- Debt financing: the user opens an optional `➕ Agregar financiamiento con deuda` panel in `app.py`; its three inputs (monto, tasa_anual, plazo_meses) are collected and passed as `deuda: dict` to `render_madurez()`. When present, `pago_mensual` is added to `costos_totales` in the curve. A pill above the chart summarises the credit terms.
+- Debt financing: the user opens an optional `➕ Agregar financiamiento con deuda` panel in `app.py`; its three inputs (monto, tasa_anual, plazo_meses) are collected and passed as `deuda: dict` to `render_madurez()`. When present, `pago_mensual` is added to `costos_totales` in the curve. A pill above the chart summarises the credit terms. The panel **auto-opens** when `inversion_inicial > capital`, with the shortfall pre-filled as the suggested credit amount.
 - Maturity curve (`render_madurez(escenario, deuda=None)`): exponential saturation `ventas(t) = ventas_maduras × (1 − e^(−k·t))`, re-scaled so `ventas(1) == porcentaje_ventas_mes1 %` and `ventas(meses_hasta_madurez) ≈ 95 %`. `k = ln(20) / meses_hasta_madurez`. Three scenarios apply multipliers to `meses_hasta_madurez` and `porcentaje_ventas_mes1` — the math is purely in the frontend; the AI only supplies the two base parameters.
+- Maturity curve recovery threshold: `flujo_acumulado >= inversion_inicial` (falls back to `capital` if `inversion_inicial` is absent or zero). This measures real return of the one-time opening investment, not just the declared capital.
 - Maturity curve horizon: KPIs (break-even, capital quemado, recuperación) are always computed over the full 60-month ceiling. The chart's x-axis extends to `min(60, max(meses_madurez + 6, mes_recuperacion + 2))` so the recovery point is always visible when it falls within 60 months. If recovery exceeds 60 months the KPI shows `> 60 meses`.
 
 ## Phase 2 scenario JSON schema (returned by `get_scenario()`, validated by `parse_scenario()`)
@@ -98,6 +102,7 @@ Notes:
   "ciudad": "str",
   "ubicacion": "str",
   "ingresos_estimados_mes": "float",
+  "inversion_inicial": "float",
   "desglose_fijos": [{"concepto": "str", "monto": "float"}, "..."],
   "desglose_variables": [{"concepto": "str", "monto": "float"}, "..."],
   "utilidad_neta_mes": "float",

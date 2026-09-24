@@ -23,6 +23,7 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "ciudad": "string",
   "ubicacion": "string",
   "ingresos_estimados_mes": 45000.0,
+  "inversion_inicial": 75000.0,
   "desglose_fijos": [
     {"concepto": "Nombre específico del costo fijo 1", "monto": 8000.0},
     {"concepto": "Nombre específico del costo fijo 2", "monto": 6000.0},
@@ -38,6 +39,10 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "meses_recuperacion_capital": 6.0,
   "precio_unitario_promedio": 150.0,
   "costo_variable_unitario": 60.0,
+  "madurez": {
+    "meses_hasta_madurez": 18,
+    "porcentaje_ventas_mes1": 25.0
+  },
   "foda": {
     "fortalezas": ["texto 1", "texto 2", "texto 3"],
     "oportunidades": ["texto 1", "texto 2", "texto 3"],
@@ -62,6 +67,7 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 | `ciudad` | string | Ciudad (echo del input) |
 | `ubicacion` | string | Nombre de la ubicación elegida (echo del input) |
 | `ingresos_estimados_mes` | float | Ingresos brutos estimados en el primer año de operación normal (MXN/mes) |
+| `inversion_inicial` | float | Desembolso único para abrir: depósito de renta, adecuaciones, equipo, inventario inicial y gastos de apertura. **Solo gastos one-time**, no costos mensuales. Puede ser mayor que `capital`. |
 | `desglose_fijos` | list | Lista de 3–6 objetos `{concepto, monto}` con costos fijos **específicos al giro** |
 | `desglose_fijos[].concepto` | string | Nombre descriptivo del costo fijo (ej. "Renta del local", "Nómina barista + cajero") |
 | `desglose_fijos[].monto` | float | Monto mensual del costo fijo en MXN |
@@ -70,9 +76,11 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 | `desglose_variables[].monto` | float | Monto mensual del costo variable en MXN |
 | `utilidad_neta_mes` | float | `ingresos_estimados_mes − sum(desglose_fijos) − sum(desglose_variables)` |
 | `punto_equilibrio_unidades` | float | `sum(desglose_fijos) / (precio_unitario_promedio − costo_variable_unitario)` |
-| `meses_recuperacion_capital` | float\|null | `capital / utilidad_neta_mes` (null si utilidad ≤ 0) |
+| `meses_recuperacion_capital` | float\|null | `capital / utilidad_neta_mes` (null si utilidad ≤ 0) — referencia estática, la UI recalcula usando la curva de madurez |
 | `precio_unitario_promedio` | float | Precio de venta promedio por unidad/servicio (MXN) |
 | `costo_variable_unitario` | float | Costo variable por unidad/servicio (MXN) |
+| `madurez.meses_hasta_madurez` | int (6–48) | Meses estimados hasta que el negocio alcance ventas estables |
+| `madurez.porcentaje_ventas_mes1` | float (5–80) | % de las ventas maduras que el negocio logra en el mes 1 de operación |
 | `foda.fortalezas` | list[string] | 3–4 fortalezas internas del negocio en esa ubicación |
 | `foda.oportunidades` | list[string] | 3–4 oportunidades del entorno |
 | `foda.debilidades` | list[string] | 3–4 debilidades o riesgos internos |
@@ -103,6 +111,7 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "ciudad": "CDMX",
   "ubicacion": "Condesa",
   "ingresos_estimados_mes": 52000.0,
+  "inversion_inicial": 95000.0,
   "desglose_fijos": [
     {"concepto": "Renta del local", "monto": 10000.0},
     {"concepto": "Nómina (barista + cajero)", "monto": 7000.0},
@@ -120,6 +129,10 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "meses_recuperacion_capital": 6.0,
   "precio_unitario_promedio": 90.0,
   "costo_variable_unitario": 38.0,
+  "madurez": {
+    "meses_hasta_madurez": 14,
+    "porcentaje_ventas_mes1": 30.0
+  },
   "foda": {
     "fortalezas": [
       "Alta densidad de público joven con poder adquisitivo",

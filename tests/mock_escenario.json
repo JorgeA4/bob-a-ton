@@ -16,6 +16,7 @@
     {"concepto": "Comisión app de delivery", "monto": 2000.0},
     {"concepto": "Reposición de alimentos y snacks", "monto": 2500.0}
   ],
+  "inversion_inicial": 125000.0,
   "utilidad_neta_mes": 28000.0,
   "punto_equilibrio_unidades": 737.0,
   "meses_recuperacion_capital": 5.4,

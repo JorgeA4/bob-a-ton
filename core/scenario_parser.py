@@ -10,6 +10,7 @@ import json
 _CLAVES_NUMERICAS = {
     "capital",
     "ingresos_estimados_mes",
+    "inversion_inicial",
     "utilidad_neta_mes",
     "punto_equilibrio_unidades",
     "precio_unitario_promedio",

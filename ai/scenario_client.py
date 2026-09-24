@@ -56,13 +56,14 @@ Datos del negocio:
 
 Instrucciones:
 1. Estima ingresos, costos y métricas de rentabilidad para el PRIMER AÑO de operación en esa ubicación.
-2. Todos los valores monetarios en MXN/mes, como números float sin símbolos de moneda.
+2. Todos los valores monetarios en MXN/mes (o MXN total para inversion_inicial), como números float sin símbolos de moneda.
 3. En desglose_fijos lista entre 3 y 6 conceptos de costos fijos ESPECÍFICOS para {giro} (ej. licencia sanitaria, seguro del local, servicio de música). NO uses categorías genéricas como "otros".
 4. En desglose_variables lista entre 3 y 6 conceptos de costos variables ESPECÍFICOS para {giro} (ej. granos de café, desechables, comisión de app de delivery). NO uses categorías genéricas como "otros".
 5. El código calculará los totales sumando los items — NO incluyas los campos costos_fijos_mes ni costos_variables_mes en el JSON.
 6. El FODA debe ser específico para el giro Y la ubicación — no genérico.
 7. En el objeto "madurez" estima: cuántos meses tarda el negocio en alcanzar ventas estabilizadas (meses_hasta_madurez) y a qué porcentaje de las ventas maduras arrancaría en el mes 1 (porcentaje_ventas_mes1, entre 5 y 80). Basa el estimado en el tipo de negocio, la zona y el capital disponible — un café bien ubicado madura más rápido que un taller industrial.
-8. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
+8. En "inversion_inicial" estima el desembolso único necesario para abrir el negocio: depósito de renta, adecuaciones del local, equipamiento, inventario inicial y gastos de apertura. NO incluyas costos operativos mensuales recurrentes — solo los gastos de apertura one-time. Este valor puede superar el capital disponible declarado.
+9. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
 
 Estructura JSON exacta (copia esta estructura, reemplaza los valores):
 {{
@@ -81,6 +82,7 @@ Estructura JSON exacta (copia esta estructura, reemplaza los valores):
     {{"concepto": "Nombre del costo variable 2", "monto": 0.0}},
     {{"concepto": "Nombre del costo variable 3", "monto": 0.0}}
   ],
+  "inversion_inicial": 0.0,
   "utilidad_neta_mes": 0.0,
   "punto_equilibrio_unidades": 0.0,
   "meses_recuperacion_capital": 0.0,
@@ -105,6 +107,7 @@ Reglas de calidad:
 - meses_recuperacion_capital = capital / utilidad_neta_mes (null si utilidad ≤ 0).
 - punto_equilibrio_unidades = suma(desglose_fijos[].monto) / (precio_unitario_promedio − costo_variable_unitario).
 - madurez.meses_hasta_madurez: entero entre 6 y 48. madurez.porcentaje_ventas_mes1: float entre 5.0 y 80.0.
+- inversion_inicial: float positivo, representa el total de gastos one-time para abrir (NO costos mensuales). Puede ser mayor que el capital disponible.
 - Incluye 3 o 4 elementos en cada lista del FODA.
 - JSON válido siempre: sin comas finales, sin comentarios, sin texto fuera del JSON.
 """

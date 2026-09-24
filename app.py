@@ -247,7 +247,7 @@ if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
     st.session_state["ciudad"] = "Tijuana"
     st.session_state["zona_preferida"] = ""
     for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
-                "mostrar_foda", "mostrar_deuda"):
+                "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto"):
         st.session_state.pop(key, None)
     st.rerun()
 # ── FIN TEST ──────────────────────────────────────────────────────────────────
@@ -302,7 +302,7 @@ if submitted:
 
         # Limpiar estado de Fase 2 si el usuario hace un nuevo análisis
         for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
-                    "mostrar_foda", "mostrar_deuda"):
+                    "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto"):
             st.session_state.pop(key, None)
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -377,7 +377,8 @@ if "ubicaciones" in st.session_state:
     if confirmar:
         st.session_state["ubicacion_elegida"] = seleccion
         # Limpiar estado derivado para forzar nuevo análisis con la nueva ubicación
-        for key in ("escenario", "modo_edicion_escenario", "mostrar_foda", "mostrar_deuda"):
+        for key in ("escenario", "modo_edicion_escenario", "mostrar_foda", "mostrar_deuda",
+                    "_deuda_sugerida", "d_monto"):
             st.session_state.pop(key, None)
 
         _giro = st.session_state.get("giro", "")
@@ -405,6 +406,13 @@ if "ubicaciones" in st.session_state:
 
         st.session_state["escenario"] = escenario_parsed
 
+        # ── Auto-activar financiamiento si inversion_inicial > capital ────────
+        _inv = escenario_parsed.get("inversion_inicial", 0.0)
+        _cap = escenario_parsed.get("capital", 0.0)
+        if _inv > _cap and not st.session_state.get("mostrar_deuda", False):
+            st.session_state["mostrar_deuda"] = True
+            st.session_state["_deuda_sugerida"] = round(_inv - _cap, 2)
+
     # ── Mostrar escenario si ya fue generado ──────────────────────────────────
     if "escenario" in st.session_state:
         _escenario = st.session_state["escenario"]
@@ -425,13 +433,28 @@ if "ubicaciones" in st.session_state:
 
         _deuda_dict = None
         if st.session_state.get("mostrar_deuda", False):
+            # Mensaje explicativo si la deuda fue activada automáticamente por faltante
+            _inv_activa = _escenario_activo.get("inversion_inicial", 0.0)
+            _cap_activa = _escenario_activo.get("capital", 0.0)
+            if _inv_activa > _cap_activa:
+                _faltante = _inv_activa - _cap_activa
+                st.warning(
+                    f"⚠️ Tu **inversión estimada de apertura** (${_inv_activa:,.0f} MXN) "
+                    f"supera tu **capital disponible** (${_cap_activa:,.0f} MXN). "
+                    f"El financiamiento sugerido cubre el faltante de **${_faltante:,.0f} MXN**. "
+                    "Puedes ajustar el monto a tu conveniencia."
+                )
+
+            # Usar faltante sugerido como valor por defecto del monto (solo primera vez)
+            _monto_default = float(st.session_state.pop("_deuda_sugerida", None) or
+                                   st.session_state.get("capital", 50000))
             d_col1, d_col2, d_col3 = st.columns(3)
             with d_col1:
                 d_monto = st.number_input(
                     "Monto del crédito (MXN)",
                     min_value=0.0,
                     step=5000.0,
-                    value=float(st.session_state.get("capital", 50000)),
+                    value=_monto_default,
                     key="d_monto",
                 )
             with d_col2:

@@ -462,6 +462,7 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
     Returns:
         dict con los valores activos (base o ajustados por el usuario), con las mismas
         claves que el escenario original. Útil para pasar a render_madurez().
+        Incluye "inversion_inicial" con el valor activo (editable en modo edición).
     """
     ubicacion  = escenario.get("ubicacion", "—")
     capital    = escenario.get("capital", 0.0)
@@ -470,10 +471,11 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
     dv         = escenario.get("desglose_variables")
 
     # Valores base de la IA (nunca se modifican — son la referencia)
-    _base_ingresos  = float(escenario.get("ingresos_estimados_mes", 0.0))
-    _base_fijos     = float(escenario.get("costos_fijos_mes", 0.0))
-    _base_variables = float(escenario.get("costos_variables_mes", 0.0))
-    _base_precio    = float(escenario.get("precio_unitario_promedio", 0.0))
+    _base_ingresos    = float(escenario.get("ingresos_estimados_mes", 0.0))
+    _base_fijos       = float(escenario.get("costos_fijos_mes", 0.0))
+    _base_variables   = float(escenario.get("costos_variables_mes", 0.0))
+    _base_precio      = float(escenario.get("precio_unitario_promedio", 0.0))
+    _base_inversion   = float(escenario.get("inversion_inicial", 0.0))
 
     # ── Cabecera: título + botón ✏️ ───────────────────────────────────────────
     hdr_left, hdr_right = st.columns([8, 2])
@@ -541,11 +543,23 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
                     help="Precio de venta promedio por producto o servicio.",
                 )
 
+            inversion = st.number_input(
+                "Inversión de apertura (one-time)",
+                min_value=0.0, step=5000.0,
+                value=_base_inversion,
+                key="escenario_inversion",
+                help=(
+                    "Desembolso único para abrir: depósito de renta, adecuaciones, "
+                    "equipamiento, inventario inicial y gastos de apertura. "
+                    "No incluye costos operativos mensuales recurrentes."
+                ),
+            )
+
             # Recalcular con los valores editados
             utilidad = ingresos - fijos - variables
             margen_contrib = precio - costo_unit
             pe = (fijos / margen_contrib) if margen_contrib > 0 else 0.0
-            mrc = (capital / utilidad) if utilidad > 0 else None
+            mrc = (inversion / utilidad) if utilidad > 0 else None
 
             # Fila de resultado inline
             color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
@@ -581,11 +595,12 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
             fijos     = _base_fijos
             variables = _base_variables
             precio    = _base_precio
+            inversion = _base_inversion
 
             utilidad = ingresos - fijos - variables
             margen_contrib = precio - costo_unit
             pe  = (fijos / margen_contrib) if margen_contrib > 0 else 0.0
-            mrc = (capital / utilidad) if utilidad > 0 else None
+            mrc = (inversion / utilidad) if utilidad > 0 else None
 
             rows_html = _pl_row(
                 "Ingresos estimados", _fmt_moneda(ingresos), _COLOR_NEUTRO,
@@ -664,11 +679,12 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
     # ── Devolver valores activos para que app.py los pase a render_madurez ───
     return {
         **escenario,
-        "ingresos_estimados_mes":  ingresos,
-        "costos_fijos_mes":        fijos,
-        "costos_variables_mes":    variables,
+        "ingresos_estimados_mes":   ingresos,
+        "costos_fijos_mes":         fijos,
+        "costos_variables_mes":     variables,
         "precio_unitario_promedio": precio,
-        "utilidad_neta_mes":       utilidad,
+        "utilidad_neta_mes":        utilidad,
+        "inversion_inicial":        inversion,
     }
 
 
@@ -853,7 +869,9 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
         float(escenario.get("costos_fijos_mes", 0.0))
         + float(escenario.get("costos_variables_mes", 0.0))
     )
-    capital = float(escenario.get("capital", 0.0))
+    capital       = float(escenario.get("capital", 0.0))
+    # Umbral de recuperación: inversion_inicial si existe, si no capital declarado
+    inversion     = float(escenario.get("inversion_inicial") or capital)
     madurez_data = escenario.get("madurez", {})
     base_meses = int(madurez_data.get("meses_hasta_madurez", 18))
     base_pct   = float(madurez_data.get("porcentaje_ventas_mes1", 25.0))
@@ -940,7 +958,7 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
     mes_recuperacion = None
     for t, u in zip(_meses_calc, _utilidad_calc):
         flujo_acumulado += u
-        if flujo_acumulado >= capital and mes_recuperacion is None:
+        if flujo_acumulado >= inversion and mes_recuperacion is None:
             mes_recuperacion = t
 
     # ── Paso 2: fijar horizonte de la gráfica ────────────────────────────────
@@ -1093,14 +1111,18 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
         )
 
     with k3:
+        _inv_label = _fmt_moneda(inversion)
         if mes_recuperacion is not None:
             rec_color = _COLOR_POSITIVO if mes_recuperacion <= 24 else _COLOR_ADVERTENCIA
             rec_texto = f"Mes {mes_recuperacion}"
-            rec_sub = "Flujo acumulado real" + (" · deuda incluida" if con_deuda else "")
+            rec_sub = (
+                f"Flujo acumulado ≥ {_inv_label}"
+                + (" · deuda incluida" if con_deuda else "")
+            )
         else:
             rec_color = _COLOR_NEGATIVO
             rec_texto = "> 60 meses"
-            rec_sub = "No se recupera dentro del horizonte máximo proyectado"
+            rec_sub = f"Inversión de apertura {_inv_label} no recuperada en 60 meses"
         st.markdown(
             _kpi_card(
                 "💰", "Recuperación real de inversión",
@@ -1131,12 +1153,14 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
     elif mes_recuperacion is None:
         st.warning(
             f"⚠️ En el escenario **{meta_activa['label']}**, el negocio alcanza el break-even en el "
-            f"**mes {mes_breakeven}** pero no recupera la inversión completa en los primeros 60 meses proyectados."
+            f"**mes {mes_breakeven}** pero no recupera la inversión de apertura "
+            f"({_fmt_moneda(inversion)}) en los primeros 60 meses proyectados."
         )
     else:
         st.success(
             f"✅ En el escenario **{meta_activa['label']}**, el negocio alcanza el break-even en el "
-            f"**mes {mes_breakeven}** y recupera la inversión completa en el **mes {mes_recuperacion}**."
+            f"**mes {mes_breakeven}** y recupera la inversión de apertura "
+            f"({_fmt_moneda(inversion)}) en el **mes {mes_recuperacion}**."
         )
 
     # ── Nota de supuestos ─────────────────────────────────────────────────────
