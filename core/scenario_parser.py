@@ -1,38 +1,33 @@
 import json
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Claves requeridas por nivel del JSON
+# Claves requeridas según el esquema real de ai/scenario_client.py
 # ──────────────────────────────────────────────────────────────────────────────
 
-_CLAVES_RAIZ = {
-    "ubicacion",
-    "giro",
-    "inversion_inicial",
-    "costos_fijos_mensuales",
-    "proyeccion_ingresos",
-    "supuestos",
+# Claves raíz obligatorias cuyo valor debe ser numérico (float)
+_CLAVES_NUMERICAS = {
+    "capital",
+    "ingresos_estimados_mes",
+    "costos_fijos_mes",
+    "costos_variables_mes",
+    "utilidad_neta_mes",
+    "punto_equilibrio_unidades",
+    "precio_unitario_promedio",
+    "costo_variable_unitario",
 }
 
-_CLAVES_INVERSION = {
-    "renta_deposito",
-    "adecuaciones",
-    "equipo",
-    "inventario_inicial",
-    "otros",
-}
+# Claves raíz obligatorias de tipo string
+_CLAVES_STRING = {"giro", "ciudad", "ubicacion"}
 
-_CLAVES_COSTOS_FIJOS = {
-    "renta",
-    "nomina",
-    "servicios",
-    "otros",
-}
+# meses_recuperacion_capital es obligatoria pero puede ser null (utilidad <= 0)
+_CLAVE_MRC = "meses_recuperacion_capital"
 
-_CLAVES_PROYECCION = {
-    "clientes_dia_estimado",
-    "ticket_promedio",
-    "dias_operacion_mes",
-}
+# Clave del FODA y sus cuatro subcategorías
+_CLAVE_FODA = "foda"
+_CLAVES_FODA = {"fortalezas", "oportunidades", "debilidades", "amenazas"}
+
+# Todas las claves raíz requeridas
+_CLAVES_RAIZ = _CLAVES_NUMERICAS | _CLAVES_STRING | {_CLAVE_MRC, _CLAVE_FODA}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -48,20 +43,6 @@ def _validar_claves(d: dict, claves_requeridas: set, contexto: str) -> None:
         )
 
 
-def _coercionar_seccion(raw: dict, claves: set, contexto: str) -> dict:
-    """
-    Valida que `raw` sea un dict con las claves requeridas y devuelve
-    un nuevo dict con solo esas claves, coercionando cada valor a float.
-    Claves desconocidas se ignoran silenciosamente.
-    """
-    if not isinstance(raw, dict):
-        raise ValueError(
-            f"'{contexto}' debe ser un objeto JSON, se recibió: {type(raw).__name__}"
-        )
-    _validar_claves(raw, claves, contexto)
-    return {clave: float(raw[clave]) for clave in claves}
-
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Función pública
 # ──────────────────────────────────────────────────────────────────────────────
@@ -69,18 +50,25 @@ def _coercionar_seccion(raw: dict, claves: set, contexto: str) -> dict:
 def parse_scenario(json_str: str) -> dict:
     """
     Convierte el JSON crudo devuelto por get_scenario() en un dict validado
-    y con tipos coercionados, listo para consumir en ui/scenario_components.py.
+    y con tipos coercionados, listo para consumir en ui/components.py.
+
+    El esquema esperado (plano) es el que devuelve ai/scenario_client.py:
+        giro, ciudad, ubicacion, capital,
+        ingresos_estimados_mes, costos_fijos_mes, costos_variables_mes,
+        utilidad_neta_mes, punto_equilibrio_unidades,
+        meses_recuperacion_capital (float o null),
+        precio_unitario_promedio, costo_variable_unitario,
+        foda: {fortalezas, oportunidades, debilidades, amenazas}
 
     Args:
         json_str: String JSON crudo tal como lo devuelve
                   ai.scenario_client.get_scenario().
 
     Returns:
-        dict con claves:
-            ubicacion (str), giro (str), supuestos (str),
-            inversion_inicial (dict[str, float]),
-            costos_fijos_mensuales (dict[str, float]),
-            proyeccion_ingresos (dict[str, float])
+        dict con todos los campos del esquema, tipos coercionados:
+        - Numéricos → float  (meses_recuperacion_capital puede ser None)
+        - Strings → str
+        - foda → dict con listas de str (elementos vacíos descartados)
 
     Raises:
         ValueError: Si json_str no es JSON válido o faltan campos requeridos
@@ -97,26 +85,57 @@ def parse_scenario(json_str: str) -> dict:
             f"Se esperaba un objeto JSON en la raíz, se recibió: {type(data).__name__}"
         )
 
-    # 2. Validar claves raíz
+    # 2. Validar que estén todas las claves raíz requeridas
     _validar_claves(data, _CLAVES_RAIZ, "la raíz del JSON")
 
-    # 3. Validar y coercionar cada sección numérica; ignorar campos extra
-    inversion = _coercionar_seccion(
-        data["inversion_inicial"], _CLAVES_INVERSION, "inversion_inicial"
-    )
-    costos = _coercionar_seccion(
-        data["costos_fijos_mensuales"], _CLAVES_COSTOS_FIJOS, "costos_fijos_mensuales"
-    )
-    proyeccion = _coercionar_seccion(
-        data["proyeccion_ingresos"], _CLAVES_PROYECCION, "proyeccion_ingresos"
-    )
+    # 3. Coercionar claves numéricas obligatorias
+    numericos: dict = {}
+    for clave in _CLAVES_NUMERICAS:
+        try:
+            numericos[clave] = float(data[clave])
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"El campo '{clave}' debe ser numérico, se recibió: {data[clave]!r}"
+            )
 
-    # 4. Construir y devolver el dict con solo las claves conocidas
+    # 4. meses_recuperacion_capital: puede ser null/None (utilidad <= 0)
+    mrc_raw = data[_CLAVE_MRC]
+    if mrc_raw is None:
+        meses_recuperacion = None
+    else:
+        try:
+            meses_recuperacion = float(mrc_raw)
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"El campo '{_CLAVE_MRC}' debe ser numérico o null, "
+                f"se recibió: {mrc_raw!r}"
+            )
+
+    # 5. Coercionar claves string
+    strings = {clave: str(data[clave]) for clave in _CLAVES_STRING}
+
+    # 6. Validar y coercionar FODA
+    foda_raw = data[_CLAVE_FODA]
+    if not isinstance(foda_raw, dict):
+        raise ValueError(
+            f"El campo 'foda' debe ser un objeto, se recibió: {type(foda_raw).__name__}"
+        )
+    _validar_claves(foda_raw, _CLAVES_FODA, "foda")
+    foda: dict = {}
+    for categoria in _CLAVES_FODA:
+        items = foda_raw[categoria]
+        if not isinstance(items, list):
+            raise ValueError(
+                f"foda.{categoria} debe ser una lista, "
+                f"se recibió: {type(items).__name__}"
+            )
+        # Coercionar cada elemento a str; descartar elementos vacíos
+        foda[categoria] = [str(item) for item in items if str(item).strip()]
+
+    # 7. Ensamblar el dict de salida con solo las claves conocidas
     return {
-        "ubicacion": str(data["ubicacion"]),
-        "giro": str(data["giro"]),
-        "inversion_inicial": inversion,
-        "costos_fijos_mensuales": costos,
-        "proyeccion_ingresos": proyeccion,
-        "supuestos": str(data["supuestos"]),
+        **strings,
+        **numericos,
+        _CLAVE_MRC: meses_recuperacion,
+        _CLAVE_FODA: foda,
     }
