@@ -3,9 +3,6 @@ import requests
 
 from ai.gemini_client import get_locations
 from core.parser import parse_response
-# ── TEST: quitar estas dos líneas cuando ya no se necesiten ──────────────────
-from tests.mock_client import get_mock_locations, get_mock_scenario
-# ─────────────────────────────────────────────────────────────────────────────
 from ui.components import (
     render_tabla,
     render_grafico,
@@ -26,9 +23,6 @@ from core.scenario_parser import parse_scenario
 from core.vulnerability_analyzer import analizar_vulnerabilidades
 from core.vulnerability_parser import parse_vulnerability
 from ai.vulnerability_client import get_vulnerability_analysis
-# ── TEST
-from tests.mock_client import get_mock_vulnerability
-# ── FIN TEST
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuración de página
@@ -226,25 +220,6 @@ with img_col:
     st.image(r"ui\images\w_image.png", None, width=720, clamp=False, channels="RGB", output_format="auto", use_container_width=None, link=None
     )
 
-# ── TEST — Botón de datos de ejemplo (quitar bloque completo cuando no se use)
-st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
-    from core.parser import parse_response as _pr
-    _raw = get_mock_locations()
-    _ubs = _pr(_raw)
-    st.session_state["ubicaciones"] = _ubs
-    st.session_state["giro"] = "Cafetería"
-    st.session_state["capital"] = 150000
-    st.session_state["ciudad"] = "Tijuana"
-    st.session_state["zona_preferida"] = ""
-    for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
-                "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto",
-                "fase3_activa", "escenario_congelado", "deuda_congelada",
-                "analisis_vulnerabilidades"):
-        st.session_state.pop(key, None)
-    st.rerun()
-# ── FIN TEST ──────────────────────────────────────────────────────────────────
-
 # ──────────────────────────────────────────────────────────────────────────────
 # Procesamiento de Fase 1 — guarda resultados en session_state para que
 # persistan a través de todos los re-renders posteriores (Fase 2, botones, etc.)
@@ -383,10 +358,7 @@ if "ubicaciones" in st.session_state:
 
         with st.spinner(f"Generando escenario financiero para {seleccion}…"):
             try:
-                # ── TEST: reemplazar get_mock_scenario por get_scenario cuando corresponda
-                raw_escenario = get_mock_scenario(seleccion)
-                # raw_escenario = get_scenario(_giro, float(_capital), _ciudad, seleccion)
-                # ── FIN TEST
+                raw_escenario = get_scenario(_giro, float(_capital), _ciudad, seleccion)
                 escenario_parsed = parse_scenario(raw_escenario)
             except EnvironmentError as e:
                 st.error(f"⚠️ Configuración faltante: {e}")
@@ -533,15 +505,12 @@ if "ubicaciones" in st.session_state:
 
                 with st.spinner("Analizando vulnerabilidades…"):
                     try:
-                        # ── TEST: reemplazar get_mock_vulnerability() por la llamada real
-                        _raw_vuln = get_mock_vulnerability()
-                        # _raw_vuln = get_vulnerability_analysis(
-                        #     st.session_state["escenario_congelado"],
-                        #     st.session_state["deuda_congelada"],
-                        #     _criterios_ubicacion,
-                        #     _alertas,
-                        # )
-                        # ── FIN TEST
+                        _raw_vuln = get_vulnerability_analysis(
+                            st.session_state["escenario_congelado"],
+                            st.session_state["deuda_congelada"],
+                            _criterios_ubicacion,
+                            _alertas,
+                        )
                         _analisis = parse_vulnerability(_raw_vuln)
                     except ValueError as e:
                         st.error(f"📋 Error al procesar el análisis: {e}")

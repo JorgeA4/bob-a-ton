@@ -1334,3 +1334,76 @@ def render_vulnerabilidades(alertas_numericas: list, analisis_ia: dict) -> None:
     # ── 5. Mensaje positivo si no hay alertas numéricas ni cuantificables ─────
     if not alertas_numericas and not riesgos_cuant:
         st.success("✅ No se detectaron problemas numéricos estructurales.")
+
+    # ── 6. Plan de acción (Fase 4) ────────────────────────────────────────────
+    plan_accion = analisis_ia.get("plan_accion", [])
+    if plan_accion:
+        st.markdown(
+            '<p style="font-size:1rem;font-weight:700;color:var(--text-color);'
+            'margin:24px 0 10px;">🗂️ Plan de acción</p>',
+            unsafe_allow_html=True,
+        )
+        for accion in plan_accion:
+            prioridad = accion.get("prioridad", "")
+            area      = accion.get("area", "")
+            texto     = accion.get("accion", "")
+            impacto   = accion.get("impacto", "")
+            plazo     = accion.get("plazo_dias", "")
+
+            # Badge de prioridad
+            _PRIORIDAD_COLOR = {
+                "inmediata":      ("#dc2626", "#fee2e2"),
+                "antes_de_abrir": ("#d97706", "#fef9c3"),
+                "corto_plazo":    ("#2563eb", "#dbeafe"),
+            }
+            _PRIORIDAD_LABEL = {
+                "inmediata":      "Inmediata",
+                "antes_de_abrir": "Antes de abrir",
+                "corto_plazo":    "Corto plazo",
+            }
+            _AREA_EMOJI = {
+                "financiero": "💰", "operativo": "⚙️",
+                "marketing":  "📣", "legal":     "📋", "rrhh": "👥",
+            }
+            p_color, p_bg = _PRIORIDAD_COLOR.get(prioridad, ("#6b7280", "#f3f4f6"))
+            p_label = _PRIORIDAD_LABEL.get(prioridad, prioridad.replace("_", " ").capitalize())
+            area_emoji = _AREA_EMOJI.get(area, "•")
+            area_label = area.replace("_", " ").capitalize()
+
+            badge_prioridad = (
+                f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;'
+                f'background:{p_bg};color:{p_color};border:1px solid {p_color}33;'
+                f'font-size:0.72rem;font-weight:700;letter-spacing:0.04em;'
+                f'margin-right:6px;">{p_label}</span>'
+            )
+            badge_area = (
+                f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;'
+                f'background:var(--secondary-background-color);'
+                f'border:1px solid rgba(128,128,128,0.3);'
+                f'color:var(--text-color);font-size:0.72rem;font-weight:600;'
+                f'letter-spacing:0.04em;margin-right:6px;">'
+                f'{area_emoji} {area_label}</span>'
+            )
+            plazo_html = (
+                f'<span style="font-size:0.75rem;color:var(--text-color);opacity:0.5;'
+                f'margin-left:4px;">⏱ {plazo} días</span>'
+                if plazo else ""
+            )
+            impacto_html = (
+                f'<div style="margin-top:8px;padding:8px 10px;'
+                f'background:rgba(37,99,235,0.07);border-radius:6px;'
+                f'font-size:0.82rem;color:var(--text-color);opacity:0.9;">'
+                f'<strong>Impacto:</strong> {impacto}</div>'
+            ) if impacto else ""
+
+            card_html = (
+                f'<div style="background:var(--secondary-background-color);'
+                f'border:1px solid rgba(128,128,128,0.2);border-radius:10px;'
+                f'padding:14px 16px;margin-bottom:10px;">'
+                f'<div style="margin-bottom:6px;">{badge_prioridad}{badge_area}{plazo_html}</div>'
+                f'<div style="font-size:0.9rem;font-weight:700;color:var(--text-color);'
+                f'margin-bottom:4px;">{texto}</div>'
+                f'{impacto_html}'
+                f'</div>'
+            )
+            st.markdown(card_html, unsafe_allow_html=True)
