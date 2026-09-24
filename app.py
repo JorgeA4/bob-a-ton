@@ -14,11 +14,21 @@ from ui.components import (
     render_escenario,
     render_foda,
     render_madurez,
+    # Fase 3
+    render_vulnerabilidades,
 )
 
 # Fase 2 — imports de scenario (no afectan Fase 1 si el módulo existe)
 from ai.scenario_client import get_scenario
 from core.scenario_parser import parse_scenario
+
+# Fase 3 — imports (Dev C y Dev B deben existir para la llamada real)
+from core.vulnerability_analyzer import analizar_vulnerabilidades
+from core.vulnerability_parser import parse_vulnerability
+from ai.vulnerability_client import get_vulnerability_analysis
+# ── TEST
+from tests.mock_client import get_mock_vulnerability
+# ── FIN TEST
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Configuración de página
@@ -247,7 +257,9 @@ if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
     st.session_state["ciudad"] = "Tijuana"
     st.session_state["zona_preferida"] = ""
     for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
-                "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto"):
+                "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto",
+                "fase3_activa", "escenario_congelado", "deuda_congelada",
+                "analisis_vulnerabilidades"):
         st.session_state.pop(key, None)
     st.rerun()
 # ── FIN TEST ──────────────────────────────────────────────────────────────────
@@ -302,7 +314,9 @@ if submitted:
 
         # Limpiar estado de Fase 2 si el usuario hace un nuevo análisis
         for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
-                    "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto"):
+                    "mostrar_foda", "mostrar_deuda", "_deuda_sugerida", "d_monto",
+                    "fase3_activa", "escenario_congelado", "deuda_congelada",
+                    "analisis_vulnerabilidades"):
             st.session_state.pop(key, None)
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -378,7 +392,9 @@ if "ubicaciones" in st.session_state:
         st.session_state["ubicacion_elegida"] = seleccion
         # Limpiar estado derivado para forzar nuevo análisis con la nueva ubicación
         for key in ("escenario", "modo_edicion_escenario", "mostrar_foda", "mostrar_deuda",
-                    "_deuda_sugerida", "d_monto"):
+                    "_deuda_sugerida", "d_monto",
+                    "fase3_activa", "escenario_congelado", "deuda_congelada",
+                    "analisis_vulnerabilidades"):
             st.session_state.pop(key, None)
 
         _giro = st.session_state.get("giro", "")
@@ -418,84 +434,158 @@ if "ubicaciones" in st.session_state:
         _escenario = st.session_state["escenario"]
         _modo_edicion = st.session_state.get("modo_edicion_escenario", False)
 
-        st.markdown("<hr>", unsafe_allow_html=True)
-        # render_escenario devuelve los valores activos (base o ajustados)
-        # para que render_madurez use los mismos números que ve el usuario
-        _escenario_activo = render_escenario(_escenario, modo_edicion=_modo_edicion)
+        # Envolver Fase 2 en expander colapsado cuando Fase 3 ya está activa
+        import contextlib
+        if st.session_state.get("fase3_activa", False):
+            _fase2_ctx = st.expander("📋 Escenario financiero", expanded=False)
+        else:
+            _fase2_ctx = contextlib.nullcontext()
 
-        # ── Financiamiento con deuda (controles colapsables) ──────────────────
-        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-        _deuda_abierta = st.session_state.get("mostrar_deuda", False)
-        _deuda_icono = "➖" if _deuda_abierta else "➕"
-        if st.button(f"{_deuda_icono} Agregar financiamiento con deuda", key="btn_deuda"):
-            st.session_state["mostrar_deuda"] = not _deuda_abierta
-            st.rerun()
-
-        _deuda_dict = None
-        if st.session_state.get("mostrar_deuda", False):
-            # Mensaje explicativo si la deuda fue activada automáticamente por faltante
-            _inv_activa = _escenario_activo.get("inversion_inicial", 0.0)
-            _cap_activa = _escenario_activo.get("capital", 0.0)
-            if _inv_activa > _cap_activa:
-                _faltante = _inv_activa - _cap_activa
-                st.warning(
-                    f"⚠️ Tu **inversión estimada de apertura** (${_inv_activa:,.0f} MXN) "
-                    f"supera tu **capital disponible** (${_cap_activa:,.0f} MXN). "
-                    f"El financiamiento sugerido cubre el faltante de **${_faltante:,.0f} MXN**. "
-                    "Puedes ajustar el monto a tu conveniencia."
-                )
-
-            # Usar faltante sugerido como valor por defecto del monto (solo primera vez)
-            _monto_default = float(st.session_state.pop("_deuda_sugerida", None) or
-                                   st.session_state.get("capital", 50000))
-            d_col1, d_col2, d_col3 = st.columns(3)
-            with d_col1:
-                d_monto = st.number_input(
-                    "Monto del crédito (MXN)",
-                    min_value=0.0,
-                    step=5000.0,
-                    value=_monto_default,
-                    key="d_monto",
-                )
-            with d_col2:
-                d_tasa = st.number_input(
-                    "Tasa de interés anual (%)",
-                    min_value=0.0,
-                    max_value=200.0,
-                    step=0.5,
-                    value=18.0,
-                    key="d_tasa",
-                )
-            with d_col3:
-                d_plazo = st.number_input(
-                    "Plazo (meses)",
-                    min_value=1,
-                    max_value=120,
-                    step=1,
-                    value=24,
-                    key="d_plazo",
-                )
-            _deuda_dict = {
-                "monto": d_monto,
-                "tasa_anual": d_tasa,
-                "plazo_meses": int(d_plazo),
-            }
-
-        # ── Curva de maduración (recibe deuda si está activa) ─────────────────
-        st.markdown("<hr>", unsafe_allow_html=True)
-        render_madurez(_escenario_activo, deuda=_deuda_dict)
-
-        # ── Botón: FODA ───────────────────────────────────────────────────────
-        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-        _foda_abierto = st.session_state.get("mostrar_foda", False)
-        _foda_icono = "➖" if _foda_abierto else "➕"
-        if st.button(f"{_foda_icono} Agregar análisis FODA", key="btn_foda"):
-            st.session_state["mostrar_foda"] = not _foda_abierto
-
-        if st.session_state.get("mostrar_foda", False):
+        with _fase2_ctx:
             st.markdown("<hr>", unsafe_allow_html=True)
-            foda_base = _escenario.get("foda", {})
-            if foda_base:
-                render_foda(foda_base)
-            else:
-                st.info("El escenario no contiene datos de FODA.")
+            # render_escenario devuelve los valores activos (base o ajustados)
+            # para que render_madurez use los mismos números que ve el usuario
+            _escenario_activo = render_escenario(_escenario, modo_edicion=_modo_edicion)
+
+            # ── Financiamiento con deuda (controles colapsables) ──────────────────
+            st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            _deuda_abierta = st.session_state.get("mostrar_deuda", False)
+            _deuda_icono = "➖" if _deuda_abierta else "➕"
+            if st.button(f"{_deuda_icono} Agregar financiamiento con deuda", key="btn_deuda"):
+                st.session_state["mostrar_deuda"] = not _deuda_abierta
+                st.rerun()
+
+            _deuda_dict = None
+            if st.session_state.get("mostrar_deuda", False):
+                # Mensaje explicativo si la deuda fue activada automáticamente por faltante
+                _inv_activa = _escenario_activo.get("inversion_inicial", 0.0)
+                _cap_activa = _escenario_activo.get("capital", 0.0)
+                if _inv_activa > _cap_activa:
+                    _faltante = _inv_activa - _cap_activa
+                    st.warning(
+                        f"⚠️ Tu **inversión estimada de apertura** (${_inv_activa:,.0f} MXN) "
+                        f"supera tu **capital disponible** (${_cap_activa:,.0f} MXN). "
+                        f"El financiamiento sugerido cubre el faltante de **${_faltante:,.0f} MXN**. "
+                        "Puedes ajustar el monto a tu conveniencia."
+                    )
+
+                # Usar faltante sugerido como valor por defecto del monto (solo primera vez)
+                _monto_default = float(st.session_state.pop("_deuda_sugerida", None) or
+                                       st.session_state.get("capital", 50000))
+                d_col1, d_col2, d_col3 = st.columns(3)
+                with d_col1:
+                    d_monto = st.number_input(
+                        "Monto del crédito (MXN)",
+                        min_value=0.0,
+                        step=5000.0,
+                        value=_monto_default,
+                        key="d_monto",
+                    )
+                with d_col2:
+                    d_tasa = st.number_input(
+                        "Tasa de interés anual (%)",
+                        min_value=0.0,
+                        max_value=200.0,
+                        step=0.5,
+                        value=18.0,
+                        key="d_tasa",
+                    )
+                with d_col3:
+                    d_plazo = st.number_input(
+                        "Plazo (meses)",
+                        min_value=1,
+                        max_value=120,
+                        step=1,
+                        value=24,
+                        key="d_plazo",
+                    )
+                _deuda_dict = {
+                    "monto": d_monto,
+                    "tasa_anual": d_tasa,
+                    "plazo_meses": int(d_plazo),
+                }
+
+            # ── Curva de maduración (recibe deuda si está activa) ─────────────────
+            st.markdown("<hr>", unsafe_allow_html=True)
+            render_madurez(_escenario_activo, deuda=_deuda_dict)
+
+            # ── Botón: FODA ───────────────────────────────────────────────────────
+            st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+            _foda_abierto = st.session_state.get("mostrar_foda", False)
+            _foda_icono = "➖" if _foda_abierto else "➕"
+            if st.button(f"{_foda_icono} Agregar análisis FODA", key="btn_foda"):
+                st.session_state["mostrar_foda"] = not _foda_abierto
+
+            if st.session_state.get("mostrar_foda", False):
+                st.markdown("<hr>", unsafe_allow_html=True)
+                foda_base = _escenario.get("foda", {})
+                if foda_base:
+                    render_foda(foda_base)
+                else:
+                    st.info("El escenario no contiene datos de FODA.")
+
+        # ── Fase 3: botón de análisis de vulnerabilidades ─────────────────────
+        if not st.session_state.get("fase3_activa", False):
+            st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
+            if st.button("🔬 Analizar vulnerabilidades", type="primary"):
+                # Congelar el estado de Fase 2 en el momento de pulsar
+                st.session_state["escenario_congelado"] = _escenario_activo.copy()
+                st.session_state["deuda_congelada"] = (
+                    _deuda_dict.copy() if _deuda_dict else None
+                )
+                st.session_state["fase3_activa"] = True
+
+                # Recuperar criterios de la ubicación elegida (opción A — sin clave nueva)
+                _ubicacion_elegida = st.session_state.get("ubicacion_elegida", "")
+                _criterios_ubicacion = {}
+                for _u in st.session_state.get("ubicaciones", []):
+                    if _u.get("nombre") == _ubicacion_elegida:
+                        _criterios_ubicacion = _u.get("criterios", {})
+                        break
+
+                # Análisis numérico determinista (Dev C)
+                _alertas = analizar_vulnerabilidades(
+                    st.session_state["escenario_congelado"],
+                    st.session_state["deuda_congelada"],
+                    _criterios_ubicacion,
+                )
+
+                with st.spinner("Analizando vulnerabilidades…"):
+                    try:
+                        # ── TEST: reemplazar get_mock_vulnerability() por la llamada real
+                        _raw_vuln = get_mock_vulnerability()
+                        # _raw_vuln = get_vulnerability_analysis(
+                        #     st.session_state["escenario_congelado"],
+                        #     st.session_state["deuda_congelada"],
+                        #     _criterios_ubicacion,
+                        #     _alertas,
+                        # )
+                        # ── FIN TEST
+                        _analisis = parse_vulnerability(_raw_vuln)
+                    except ValueError as e:
+                        st.error(f"📋 Error al procesar el análisis: {e}")
+                        st.stop()
+                    except Exception as e:
+                        st.error(f"❌ Error inesperado en análisis de vulnerabilidades: {e}")
+                        st.stop()
+
+                st.session_state["analisis_vulnerabilidades"] = _analisis
+                st.rerun()
+
+        # ── Mostrar análisis de vulnerabilidades si ya fue generado ───────────
+        if st.session_state.get("fase3_activa", False) and \
+                "analisis_vulnerabilidades" in st.session_state:
+            _ubicacion_elegida = st.session_state.get("ubicacion_elegida", "")
+            _criterios_ubicacion = {}
+            for _u in st.session_state.get("ubicaciones", []):
+                if _u.get("nombre") == _ubicacion_elegida:
+                    _criterios_ubicacion = _u.get("criterios", {})
+                    break
+            _alertas_guardadas = analizar_vulnerabilidades(
+                st.session_state["escenario_congelado"],
+                st.session_state.get("deuda_congelada"),
+                _criterios_ubicacion,
+            )
+            st.markdown("<hr>", unsafe_allow_html=True)
+            render_vulnerabilidades(_alertas_guardadas,
+                                    st.session_state["analisis_vulnerabilidades"])

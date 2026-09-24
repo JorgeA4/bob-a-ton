@@ -1174,3 +1174,163 @@ def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
         + f'.</div>',
         unsafe_allow_html=True,
     )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Fase 3 — Análisis de vulnerabilidades
+# ──────────────────────────────────────────────────────────────────────────────
+
+_SEV_COLOR = {
+    "critica": "#dc2626",
+    "alta":    "#d97706",
+    "media":   "#2563eb",
+    "baja":    "#16a34a",
+}
+
+_VEREDICTO_EMOJI = {
+    "viable":              "🟢",
+    "viable_con_reservas": "🟡",
+    "riesgo_alto":         "🟠",
+    "no_viable":           "🔴",
+}
+
+_FUENTE_LABEL = {
+    "foda":  "FODA",
+    "zona":  "Zona",
+    "giro":  "Giro",
+    "deuda": "Deuda",
+}
+
+
+def _sev_badge(severidad: str) -> str:
+    color = _SEV_COLOR.get(severidad, "#57606a")
+    label = severidad.capitalize()
+    return (
+        f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;'
+        f'background:{color};color:#fff;font-size:0.72rem;font-weight:700;'
+        f'letter-spacing:0.04em;margin-right:6px;">{label}</span>'
+    )
+
+
+def _fuente_badge(fuente: str) -> str:
+    label = _FUENTE_LABEL.get(fuente, fuente.capitalize())
+    return (
+        f'<span style="display:inline-block;padding:2px 10px;border-radius:12px;'
+        f'background:var(--secondary-background-color);'
+        f'border:1px solid rgba(128,128,128,0.3);'
+        f'color:var(--text-color);font-size:0.72rem;font-weight:600;'
+        f'letter-spacing:0.04em;margin-right:6px;">{label}</span>'
+    )
+
+
+def _vuln_card(html_badges: str, titulo: str, descripcion: str,
+               mitigacion: str | None = None) -> str:
+    mit_html = ""
+    if mitigacion:
+        mit_html = (
+            f'<div style="margin-top:8px;padding:8px 10px;'
+            f'background:rgba(59,130,246,0.07);border-radius:6px;'
+            f'font-size:0.82rem;color:var(--text-color);opacity:0.9;">'
+            f'<strong>Mitigación:</strong> {mitigacion}</div>'
+        )
+    return (
+        f'<div style="background:var(--secondary-background-color);'
+        f'border:1px solid rgba(128,128,128,0.2);border-radius:10px;'
+        f'padding:14px 16px;margin-bottom:10px;">'
+        f'<div style="margin-bottom:6px;">{html_badges}</div>'
+        f'<div style="font-size:0.9rem;font-weight:700;color:var(--text-color);'
+        f'margin-bottom:4px;">{titulo}</div>'
+        f'<div style="font-size:0.85rem;color:var(--text-color);opacity:0.8;">'
+        f'{descripcion}</div>'
+        f'{mit_html}'
+        f'</div>'
+    )
+
+
+def render_vulnerabilidades(alertas_numericas: list, analisis_ia: dict) -> None:
+    """
+    Renderiza el análisis de vulnerabilidades (Fase 3).
+
+    alertas_numericas: list[dict] de analizar_vulnerabilidades() — puede ser vacía.
+    analisis_ia: dict de parse_vulnerability() — siempre presente si se llama.
+    """
+    # ── 1. Header + resumen ejecutivo + veredicto ─────────────────────────────
+    st.markdown(
+        '<div style="display:flex;align-items:center;gap:10px;padding:12px 0 4px;">'
+        '<span style="font-size:1.4rem;">🔬</span>'
+        '<h2 style="margin:0;font-size:1.3rem;font-weight:800;color:var(--text-color);">'
+        'Análisis de vulnerabilidades'
+        '</h2></div>',
+        unsafe_allow_html=True,
+    )
+
+    resumen = analisis_ia.get("resumen_ejecutivo", "")
+    if resumen:
+        st.markdown(
+            f'<p style="font-size:0.9rem;color:var(--text-color);opacity:0.8;'
+            f'margin:4px 0 12px;">{resumen}</p>',
+            unsafe_allow_html=True,
+        )
+
+    veredicto = analisis_ia.get("veredicto", "")
+    v_emoji = _VEREDICTO_EMOJI.get(veredicto, "⚪")
+    v_label = veredicto.replace("_", " ").capitalize() if veredicto else "—"
+    st.markdown(
+        f'<div style="margin-bottom:16px;">'
+        f'<span style="font-size:0.9rem;font-weight:600;color:var(--text-color);">'
+        f'Veredicto: </span>'
+        f'<span style="font-size:0.95rem;font-weight:700;color:var(--text-color);">'
+        f'{v_emoji} {v_label}</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    riesgos_cuant = analisis_ia.get("riesgos_cuantificables", [])
+    riesgos_ctx   = analisis_ia.get("riesgos_contextuales", [])
+
+    # ── 2. Alertas numéricas deterministas ────────────────────────────────────
+    if alertas_numericas:
+        st.markdown(
+            '<p style="font-size:1rem;font-weight:700;color:var(--text-color);'
+            'margin:8px 0 10px;">⚠️ Alertas detectadas automáticamente</p>',
+            unsafe_allow_html=True,
+        )
+        for alerta in alertas_numericas:
+            badge = _sev_badge(alerta.get("severidad", ""))
+            card  = _vuln_card(badge,
+                               alerta.get("titulo", ""),
+                               alerta.get("detalle", ""))
+            st.markdown(card, unsafe_allow_html=True)
+
+    # ── 3. Riesgos cuantificables (IA) ────────────────────────────────────────
+    if riesgos_cuant:
+        st.markdown(
+            '<p style="font-size:1rem;font-weight:700;color:var(--text-color);'
+            'margin:16px 0 10px;">📊 Riesgos cuantificables</p>',
+            unsafe_allow_html=True,
+        )
+        for r in riesgos_cuant:
+            badge = _sev_badge(r.get("severidad", ""))
+            card  = _vuln_card(badge,
+                               r.get("titulo", ""),
+                               r.get("descripcion", ""),
+                               r.get("mitigacion"))
+            st.markdown(card, unsafe_allow_html=True)
+
+    # ── 4. Riesgos contextuales (IA) ─────────────────────────────────────────
+    if riesgos_ctx:
+        st.markdown(
+            '<p style="font-size:1rem;font-weight:700;color:var(--text-color);'
+            'margin:16px 0 10px;">🌐 Riesgos contextuales</p>',
+            unsafe_allow_html=True,
+        )
+        for r in riesgos_ctx:
+            badges = _fuente_badge(r.get("fuente", "")) + _sev_badge(r.get("severidad", ""))
+            card   = _vuln_card(badges,
+                                r.get("titulo", ""),
+                                r.get("descripcion", ""),
+                                r.get("mitigacion"))
+            st.markdown(card, unsafe_allow_html=True)
+
+    # ── 5. Mensaje positivo si no hay alertas numéricas ni cuantificables ─────
+    if not alertas_numericas and not riesgos_cuant:
+        st.success("✅ No se detectaron problemas numéricos estructurales.")

@@ -29,3 +29,10 @@ def get_mock_scenario(ubicacion: str | None = None) -> str:
     if ubicacion:
         data["ubicacion"] = ubicacion
     return json.dumps(data, ensure_ascii=False)
+
+_FILE_VULNERABILIDAD = _DIR / "mock_vulnerabilidad.json"
+
+
+def get_mock_vulnerability() -> str:
+    """Devuelve el JSON de vulnerabilidades de ejemplo como string crudo."""
+    return _FILE_VULNERABILIDAD.read_text(encoding="utf-8")
