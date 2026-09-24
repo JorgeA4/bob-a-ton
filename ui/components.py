@@ -461,7 +461,7 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
 
     Returns:
         dict con los valores activos (base o ajustados por el usuario), con las mismas
-        claves que el escenario original. Útil para pasar a render_deuda().
+        claves que el escenario original. Útil para pasar a render_madurez().
     """
     ubicacion  = escenario.get("ubicacion", "—")
     capital    = escenario.get("capital", 0.0)
@@ -661,7 +661,7 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
             "Considera ajustar precios o reducir costos antes de abrir."
         )
 
-    # ── Devolver valores activos para que app.py los pase a render_deuda ──────
+    # ── Devolver valores activos para que app.py los pase a render_madurez ───
     return {
         **escenario,
         "ingresos_estimados_mes":  ingresos,
@@ -721,112 +721,28 @@ def render_foda(foda: dict) -> None:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 8. render_deuda — amortización francesa + métricas actualizadas con deuda
+# 8. _calcular_pago_mensual — amortización francesa (helper puro, sin UI)
 # ──────────────────────────────────────────────────────────────────────────────
 
-def render_deuda(escenario: dict, deuda: dict) -> None:
+def _calcular_pago_mensual(monto: float, tasa_anual: float, plazo_meses: int) -> tuple[float, float, float]:
     """
-    Calcula el pago mensual con amortización francesa y muestra métricas
-    financieras actualizadas considerando el servicio de deuda.
+    Calcula el pago mensual con amortización francesa.
 
-    Args:
-        escenario: dict base de parse_scenario().
-        deuda: dict con:
-            - "monto": float  — monto del crédito en MXN
-            - "tasa_anual": float  — tasa de interés anual en % (ej. 18.0)
-            - "plazo_meses": int  — número de mensualidades
+    Fórmula: pago = monto * (r * (1+r)^n) / ((1+r)^n - 1)
+    donde r = tasa_anual / 12 / 100  y  n = plazo_meses
 
-    Fórmula de amortización francesa:
-        pago = monto * (r * (1 + r)^n) / ((1 + r)^n - 1)
-        donde r = tasa_anual / 12 / 100  y  n = plazo_meses
+    Returns:
+        (pago_mensual, total_pagado, total_intereses)
     """
-    st.subheader("🏦 Escenario con financiamiento")
-
-    monto = float(deuda.get("monto", 0.0))
-    tasa_anual = float(deuda.get("tasa_anual", 0.0))
-    plazo = int(deuda.get("plazo_meses", 1))
-
-    # ── Cálculo de amortización francesa ────────────────────────────────────
-    if plazo < 1:
-        plazo = 1
-
-    r = tasa_anual / 12.0 / 100.0  # tasa mensual como decimal
-
+    plazo = max(1, plazo_meses)
+    r = tasa_anual / 12.0 / 100.0
     if r == 0.0:
-        # Sin interés: pago lineal
         pago_mensual = monto / plazo
     else:
         factor = (1 + r) ** plazo
         pago_mensual = monto * (r * factor) / (factor - 1)
-
     total_pagado = pago_mensual * plazo
-    total_intereses = total_pagado - monto
-
-    # ── Métricas con deuda ───────────────────────────────────────────────────
-    ingresos = escenario.get("ingresos_estimados_mes", 0.0)
-    fijos = escenario.get("costos_fijos_mes", 0.0)
-    variables = escenario.get("costos_variables_mes", 0.0)
-    capital = escenario.get("capital", 0.0)
-
-    utilidad_sin_deuda = ingresos - fijos - variables
-    utilidad_con_deuda = utilidad_sin_deuda - pago_mensual
-    mrc_con_deuda = (capital / utilidad_con_deuda) if utilidad_con_deuda > 0 else None
-
-    # ── Resumen del crédito ──────────────────────────────────────────────────
-    _label_style = 'font-size:0.75rem;color:var(--text-color);opacity:0.6;'
-    _val_style = f'font-weight:700;font-size:1rem;color:var(--text-color);'
-    st.markdown(
-        f'<div style="background:var(--secondary-background-color);border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
-        f'padding:18px 24px;margin-bottom:16px;">'
-        f'<div style="font-weight:700;color:var(--text-color);font-size:0.9rem;margin-bottom:10px;">'
-        f'📄 Resumen del crédito</div>'
-        f'<div style="display:flex;flex-wrap:wrap;gap:24px;">'
-        f'<div><div style="{_label_style}">Monto solicitado</div>'
-        f'<div style="{_val_style}">{_fmt_moneda(monto)}</div></div>'
-        f'<div><div style="{_label_style}">Tasa anual</div>'
-        f'<div style="{_val_style}">{tasa_anual:.2f}%</div></div>'
-        f'<div><div style="{_label_style}">Plazo</div>'
-        f'<div style="{_val_style}">{plazo} meses</div></div>'
-        f'<div><div style="{_label_style}">Pago mensual</div>'
-        f'<div style="font-weight:700;font-size:1rem;color:#2563eb;">{_fmt_moneda(pago_mensual)}</div></div>'
-        f'<div><div style="{_label_style}">Total intereses</div>'
-        f'<div style="font-weight:700;font-size:1rem;color:#d97706;">{_fmt_moneda(total_intereses)}</div></div>'
-        f'<div><div style="{_label_style}">Total a pagar</div>'
-        f'<div style="{_val_style}">{_fmt_moneda(total_pagado)}</div></div>'
-        f'</div></div>',
-        unsafe_allow_html=True,
-    )
-
-    # ── Impacto en utilidad ──────────────────────────────────────────────────
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        st.metric(
-            "Utilidad sin deuda / mes",
-            _fmt_moneda(utilidad_sin_deuda),
-        )
-    with c2:
-        delta_val = utilidad_con_deuda - utilidad_sin_deuda
-        st.metric(
-            "Utilidad con deuda / mes",
-            _fmt_moneda(utilidad_con_deuda),
-            delta=f"{_fmt_moneda(delta_val)}",
-        )
-    with c3:
-        st.metric(
-            "Recuperación con deuda",
-            _fmt_meses(mrc_con_deuda),
-        )
-
-    if utilidad_con_deuda < 0:
-        st.error(
-            "⚠️ El pago mensual de la deuda hace que la utilidad sea **negativa**. "
-            "Considera un monto menor, plazo mayor o reducir costos."
-        )
-    elif pago_mensual > utilidad_sin_deuda * 0.4:
-        st.warning(
-            f"⚠️ El pago mensual ({_fmt_moneda(pago_mensual)}) representa más del 40 % "
-            "de la utilidad — nivel de deuda alto."
-        )
+    return pago_mensual, total_pagado, total_pagado - monto
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -902,12 +818,16 @@ _ESCENARIO_META = {
 }
 
 
-def render_madurez(escenario: dict) -> None:
+def render_madurez(escenario: dict, deuda: dict | None = None) -> None:
     """
     Muestra la curva de maduración del negocio con tres escenarios seleccionables.
 
+    Si se proporciona `deuda`, el pago mensual calculado con amortización francesa
+    se suma a los costos totales en la curva, y se muestra una pill informativa
+    con los datos del crédito encima de la gráfica.
+
     Calcula para cada escenario (pesimista / moderado / optimista):
-      - Una curva de ingresos vs costos mes a mes hasta la madurez + 6 meses buffer
+      - Una curva de ingresos vs costos (+ deuda) mes a mes hasta la madurez + 6 meses buffer
       - El mes de break-even real (primer mes con utilidad > 0)
       - El capital consumido (quemado) antes del break-even
       - La recuperación de inversión real sobre flujo acumulado
@@ -918,6 +838,8 @@ def render_madurez(escenario: dict) -> None:
         escenario: dict validado por core.scenario_parser.parse_scenario().
                    Requiere las claves: ingresos_estimados_mes, costos_fijos_mes,
                    costos_variables_mes, capital, madurez.
+        deuda: dict opcional con monto, tasa_anual, plazo_meses.
+               Si es None o monto == 0, la curva se muestra sin deuda.
     """
     st.subheader("📈 Curva de maduración del negocio")
     st.caption(
@@ -927,14 +849,55 @@ def render_madurez(escenario: dict) -> None:
 
     # ── Datos base ────────────────────────────────────────────────────────────
     ventas_maduras = float(escenario.get("ingresos_estimados_mes", 0.0))
-    costos_totales = (
+    costos_operativos = (
         float(escenario.get("costos_fijos_mes", 0.0))
         + float(escenario.get("costos_variables_mes", 0.0))
     )
     capital = float(escenario.get("capital", 0.0))
-    madurez = escenario.get("madurez", {})
-    base_meses = int(madurez.get("meses_hasta_madurez", 18))
-    base_pct   = float(madurez.get("porcentaje_ventas_mes1", 25.0))
+    madurez_data = escenario.get("madurez", {})
+    base_meses = int(madurez_data.get("meses_hasta_madurez", 18))
+    base_pct   = float(madurez_data.get("porcentaje_ventas_mes1", 25.0))
+
+    # ── Cálculo del pago de deuda (si aplica) ────────────────────────────────
+    pago_mensual_deuda = 0.0
+    total_intereses_deuda = 0.0
+    monto_deuda = 0.0
+    plazo_deuda = 0
+    tasa_deuda = 0.0
+    con_deuda = False
+
+    if deuda:
+        monto_deuda = float(deuda.get("monto", 0.0))
+        tasa_deuda = float(deuda.get("tasa_anual", 0.0))
+        plazo_deuda = int(deuda.get("plazo_meses", 1))
+        if monto_deuda > 0:
+            pago_mensual_deuda, _, total_intereses_deuda = _calcular_pago_mensual(
+                monto_deuda, tasa_deuda, plazo_deuda
+            )
+            con_deuda = True
+
+    costos_totales = costos_operativos + pago_mensual_deuda
+
+    # ── Pill informativa de deuda (solo si hay crédito activo) ───────────────
+    if con_deuda:
+        utilidad_madura = ventas_maduras - costos_operativos
+        pct_deuda = (pago_mensual_deuda / utilidad_madura * 100) if utilidad_madura > 0 else None
+        pct_texto = f" · {pct_deuda:.0f}% de la utilidad madura" if pct_deuda is not None else ""
+        deuda_color = _COLOR_NEGATIVO if (pct_deuda or 0) > 40 else _COLOR_ADVERTENCIA
+        st.markdown(
+            f'<div style="display:inline-flex;align-items:center;gap:8px;'
+            f'background:var(--secondary-background-color);'
+            f'border:1px solid {deuda_color}55;border-radius:8px;'
+            f'padding:6px 14px;margin-bottom:10px;font-size:0.82rem;">'
+            f'<span style="color:{deuda_color};font-weight:700;">🏦 Crédito incluido</span>'
+            f'<span style="color:var(--text-color);opacity:0.7;">'
+            f'{_fmt_moneda(monto_deuda)} · {tasa_deuda:.1f}% anual · {plazo_deuda} meses · '
+            f'pago {_fmt_moneda(pago_mensual_deuda)}/mes{pct_texto} · '
+            f'intereses totales {_fmt_moneda(total_intereses_deuda)}'
+            f'</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
     # ── Selector de escenario ─────────────────────────────────────────────────
     escenario_activo = st.session_state.get("escenario_madurez", "moderado")
@@ -942,15 +905,7 @@ def render_madurez(escenario: dict) -> None:
     btn_cols = st.columns(3)
     for col, (key, meta) in zip(btn_cols, _ESCENARIO_META.items()):
         with col:
-            is_active = escenario_activo == key
-            btn_style = (
-                f"background:{meta['bg']};border:2px solid {meta['color']};"
-                f"border-radius:10px;padding:10px 0;width:100%;font-weight:700;"
-                f"font-size:0.9rem;color:{meta['color']};cursor:pointer;"
-                + ("box-shadow:0 0 0 3px " + meta["color"] + "33;" if is_active else "")
-            )
-            # Usamos st.button nativo; el estilo de "seleccionado" se indica con type
-            btn_type = "primary" if is_active else "secondary"
+            btn_type = "primary" if escenario_activo == key else "secondary"
             if st.button(meta["label"], key=f"btn_madurez_{key}", use_container_width=True, type=btn_type):
                 st.session_state["escenario_madurez"] = key
                 st.rerun()
@@ -965,15 +920,15 @@ def render_madurez(escenario: dict) -> None:
     k = _curva_params(meses_madurez, pct_mes1)
     n_meses = meses_madurez + 6   # buffer de 6 meses post-madurez
 
-    meses       = list(range(1, n_meses + 1))
-    ingresos_v  = []
-    utilidad_v  = []
+    meses      = list(range(1, n_meses + 1))
+    ingresos_v = []
+    utilidad_v = []
     for t in meses:
         ing, util = _flujo_mensual(t, ventas_maduras, costos_totales, k, pct_mes1)
         ingresos_v.append(ing)
         utilidad_v.append(util)
 
-    costos_v = [costos_totales] * n_meses  # costos fijos + variables = constantes
+    costos_v = [costos_totales] * n_meses
 
     # ── KPIs derivados ────────────────────────────────────────────────────────
     # 1. Mes de break-even real
@@ -981,8 +936,7 @@ def render_madurez(escenario: dict) -> None:
 
     # 2. Capital quemado antes del break-even
     if mes_breakeven is not None:
-        meses_deficit = [u for u in utilidad_v[:mes_breakeven - 1] if u < 0]
-        capital_quemado = abs(sum(meses_deficit))
+        capital_quemado = abs(sum(u for u in utilidad_v[:mes_breakeven - 1] if u < 0))
     else:
         capital_quemado = abs(sum(u for u in utilidad_v if u < 0))
 
@@ -997,14 +951,26 @@ def render_madurez(escenario: dict) -> None:
     # ── Gráfica Plotly ────────────────────────────────────────────────────────
     fig = go.Figure()
 
-    # Área de costos (fondo rojo claro)
+    # Línea de costos totales (operativos + deuda si aplica)
+    costos_label = "Costos + deuda" if con_deuda else "Costos totales"
     fig.add_trace(go.Scatter(
         x=meses, y=costos_v,
         mode="lines",
-        name="Costos totales",
+        name=costos_label,
         line=dict(color=_COLOR_NEGATIVO, width=2, dash="dot"),
         fill=None,
     ))
+
+    # Si hay deuda, añadir línea de costos solo operativos como referencia
+    if con_deuda:
+        costos_op_v = [costos_operativos] * n_meses
+        fig.add_trace(go.Scatter(
+            x=meses, y=costos_op_v,
+            mode="lines",
+            name="Costos operativos",
+            line=dict(color=_COLOR_ADVERTENCIA, width=1, dash="dot"),
+            fill=None,
+        ))
 
     # Curva de ingresos
     fig.add_trace(go.Scatter(
@@ -1013,7 +979,7 @@ def render_madurez(escenario: dict) -> None:
         name="Ingresos proyectados",
         line=dict(color=_COLOR_NEUTRO, width=3),
         fill="tonexty",
-        fillcolor="rgba(220,38,38,0.08)",  # zona roja: ingresos < costos
+        fillcolor="rgba(220,38,38,0.08)",
     ))
 
     # Línea de ingresos maduros (referencia)
@@ -1083,7 +1049,7 @@ def render_madurez(escenario: dict) -> None:
             _kpi_card(
                 "🎯", "Break-even real",
                 be_texto, be_color,
-                subtitulo="Primer mes con ingresos > costos",
+                subtitulo="Primer mes con ingresos > costos" + (" + deuda" if con_deuda else ""),
             ),
             unsafe_allow_html=True,
         )
@@ -1111,7 +1077,7 @@ def render_madurez(escenario: dict) -> None:
             _kpi_card(
                 "💰", "Recuperación real de inversión",
                 rec_texto, rec_color,
-                subtitulo="Basada en flujo acumulado real, no el promedio estático",
+                subtitulo="Flujo acumulado real" + (f" · deuda incluida" if con_deuda else ""),
             ),
             unsafe_allow_html=True,
         )
@@ -1146,7 +1112,8 @@ def render_madurez(escenario: dict) -> None:
         f'ⓘ Supuestos de maduración (escenario {escenario_activo}): '
         f'{meses_madurez} meses hasta ventas estables · '
         f'arranque en {pct_mes1:.0f}% de las ventas maduras · '
-        f'costos fijos desde el mes 1.'
-        f'</div>',
+        f'costos fijos desde el mes 1'
+        + (f' · pago de deuda {_fmt_moneda(pago_mensual_deuda)}/mes incluido' if con_deuda else '')
+        + f'.</div>',
         unsafe_allow_html=True,
     )

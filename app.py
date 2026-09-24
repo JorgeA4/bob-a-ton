@@ -13,7 +13,6 @@ from ui.components import (
     # Fase 2
     render_escenario,
     render_foda,
-    render_deuda,
     render_madurez,
 )
 
@@ -413,40 +412,19 @@ if "ubicaciones" in st.session_state:
 
         st.markdown("<hr>", unsafe_allow_html=True)
         # render_escenario devuelve los valores activos (base o ajustados)
-        # para que render_deuda use los mismos números que ve el usuario
+        # para que render_madurez use los mismos números que ve el usuario
         _escenario_activo = render_escenario(_escenario, modo_edicion=_modo_edicion)
 
-        # ── Curva de maduración ───────────────────────────────────────────────
-        st.markdown("<hr>", unsafe_allow_html=True)
-        render_madurez(_escenario_activo)
-
-        # ── Botón: FODA ───────────────────────────────────────────────────────
-        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
-        _foda_abierto = st.session_state.get("mostrar_foda", False)
-        _foda_icono = "➖" if _foda_abierto else "➕"
-        if st.button(f"{_foda_icono} Agregar análisis FODA", key="btn_foda"):
-            st.session_state["mostrar_foda"] = not _foda_abierto
-
-        if st.session_state.get("mostrar_foda", False):
-            st.markdown("<hr>", unsafe_allow_html=True)
-            foda_base = _escenario.get("foda", {})
-            if foda_base:
-                render_foda(foda_base)
-            else:
-                st.info("El escenario no contiene datos de FODA.")
-
-        # ── Botón: Financiamiento con deuda ───────────────────────────────────
+        # ── Financiamiento con deuda (controles colapsables) ──────────────────
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
         _deuda_abierta = st.session_state.get("mostrar_deuda", False)
         _deuda_icono = "➖" if _deuda_abierta else "➕"
         if st.button(f"{_deuda_icono} Agregar financiamiento con deuda", key="btn_deuda"):
             st.session_state["mostrar_deuda"] = not _deuda_abierta
+            st.rerun()
 
+        _deuda_dict = None
         if st.session_state.get("mostrar_deuda", False):
-            st.markdown("<hr>", unsafe_allow_html=True)
-            st.markdown("**🏦 Configura el crédito**", unsafe_allow_html=False)
-
-            # Controles fuera de st.form → recálculo inmediato
             d_col1, d_col2, d_col3 = st.columns(3)
             with d_col1:
                 d_monto = st.number_input(
@@ -474,10 +452,27 @@ if "ubicaciones" in st.session_state:
                     value=24,
                     key="d_plazo",
                 )
-
-            deuda = {
+            _deuda_dict = {
                 "monto": d_monto,
                 "tasa_anual": d_tasa,
                 "plazo_meses": int(d_plazo),
             }
-            render_deuda(_escenario_activo, deuda)
+
+        # ── Curva de maduración (recibe deuda si está activa) ─────────────────
+        st.markdown("<hr>", unsafe_allow_html=True)
+        render_madurez(_escenario_activo, deuda=_deuda_dict)
+
+        # ── Botón: FODA ───────────────────────────────────────────────────────
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+        _foda_abierto = st.session_state.get("mostrar_foda", False)
+        _foda_icono = "➖" if _foda_abierto else "➕"
+        if st.button(f"{_foda_icono} Agregar análisis FODA", key="btn_foda"):
+            st.session_state["mostrar_foda"] = not _foda_abierto
+
+        if st.session_state.get("mostrar_foda", False):
+            st.markdown("<hr>", unsafe_allow_html=True)
+            foda_base = _escenario.get("foda", {})
+            if foda_base:
+                render_foda(foda_base)
+            else:
+                st.info("El escenario no contiene datos de FODA.")
