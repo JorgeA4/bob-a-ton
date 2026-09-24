@@ -82,15 +82,15 @@ def _render_leyenda() -> None:
     # Nivel "sin datos"
     items_html += (
         '<span style="display:inline-flex;align-items:center;gap:5px;'
-        'background:#f3f4f6;color:#6b7280;border:1px solid #d1d5db;'
+        'background:rgba(128,128,128,0.1);color:var(--text-color);border:1px solid rgba(128,128,128,0.3);'
         'border-radius:20px;padding:4px 12px;font-size:0.78rem;font-weight:600;">'
         '⚪ Sin datos</span>'
     )
     st.markdown(
         f'<div style="display:flex;flex-wrap:wrap;gap:8px;'
-        f'background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;'
+        f'background:var(--secondary-background-color);border:1px solid rgba(128,128,128,0.2);border-radius:10px;'
         f'padding:12px 16px;margin-bottom:16px;">'
-        f'<span style="font-size:0.78rem;color:#64748b;font-weight:600;'
+        f'<span style="font-size:0.78rem;color:var(--text-color);opacity:0.6;font-weight:600;'
         f'align-self:center;margin-right:4px;">Simbología:</span>'
         f'{items_html}'
         f'</div>',
@@ -111,7 +111,7 @@ def render_tabla(ubicaciones: list) -> None:
     totales = [u.get("puntaje_total", 0) for u in ubicaciones]
 
     # ── Encabezados de columnas ──────────────────────────────────────────────
-    header_cells = '<th style="min-width:140px;text-align:left;padding:10px 14px;font-weight:700;color:#1e293b;">Criterio</th>'
+    header_cells = '<th style="min-width:140px;text-align:left;padding:10px 14px;font-weight:700;color:var(--text-color);">Criterio</th>'
     for i, (nombre, total) in enumerate(zip(nombres, totales)):
         color = LOCATION_COLORS[i % len(LOCATION_COLORS)]
         header_cells += (
@@ -124,8 +124,8 @@ def render_tabla(ubicaciones: list) -> None:
     # ── Filas de criterios ───────────────────────────────────────────────────
     body_rows = ""
     for row_idx, (clave, label) in enumerate(CRITERIOS_LABELS.items()):
-        bg = "#ffffff" if row_idx % 2 == 0 else "#f8fafc"
-        cells = f'<td style="padding:10px 14px;font-weight:600;color:#374151;background:{bg};">{label}</td>'
+        bg = "var(--background-color)" if row_idx % 2 == 0 else "var(--secondary-background-color)"
+        cells = f'<td style="padding:10px 14px;font-weight:600;color:var(--text-color);background:{bg};">{label}</td>'
         for u in ubicaciones:
             p = _puntaje(u, clave)
             n = _nivel_raw(u, clave)
@@ -133,22 +133,22 @@ def render_tabla(ubicaciones: list) -> None:
         body_rows += f"<tr>{cells}</tr>"
 
     # ── Fila de totales ──────────────────────────────────────────────────────
-    total_cells = '<td style="padding:10px 14px;font-weight:800;color:#0f172a;background:#f1f5f9;">TOTAL</td>'
+    total_cells = '<td style="padding:10px 14px;font-weight:800;color:var(--text-color);background:var(--secondary-background-color);">TOTAL</td>'
     for i, total in enumerate(totales):
         color = LOCATION_COLORS[i % len(LOCATION_COLORS)]
         total_cells += (
-            f'<td style="text-align:center;padding:10px 12px;background:#f1f5f9;">'
+            f'<td style="text-align:center;padding:10px 12px;background:var(--secondary-background-color);">'
             f'{_score_badge(total, color)}</td>'
         )
     body_rows += f"<tr>{total_cells}</tr>"
 
     # ── Tabla completa ───────────────────────────────────────────────────────
     table_html = f"""
-    <div style="overflow-x:auto;border-radius:12px;border:1px solid #e2e8f0;
+    <div style="overflow-x:auto;border-radius:12px;border:1px solid rgba(128,128,128,0.2);
                 box-shadow:0 1px 4px rgba(0,0,0,0.06);margin-bottom:8px;">
       <table style="width:100%;border-collapse:collapse;font-family:-apple-system,'Segoe UI',sans-serif;font-size:0.87rem;">
         <thead>
-          <tr style="background:#f1f5f9;border-bottom:2px solid #e2e8f0;">
+          <tr style="background:var(--secondary-background-color);border-bottom:2px solid rgba(128,128,128,0.2);">
             {header_cells}
           </tr>
         </thead>
@@ -203,7 +203,7 @@ def render_grafico(ubicaciones: list) -> None:
         yaxis=dict(
             range=[0, 10],
             title="Puntaje (1–10)",
-            gridcolor="#f1f5f9",
+            gridcolor="rgba(128,128,128,0.2)",
             tickfont=dict(size=11),
         ),
         xaxis=dict(
@@ -220,8 +220,8 @@ def render_grafico(ubicaciones: list) -> None:
         ),
         height=430,
         margin=dict(t=50, b=90, l=50, r=20),
-        plot_bgcolor="#ffffff",
-        paper_bgcolor="#ffffff",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
         font=dict(family="-apple-system, 'Segoe UI', sans-serif"),
         hoverlabel=dict(
             bgcolor="#1e293b",
@@ -268,7 +268,7 @@ def render_recomendacion(ubicaciones: list) -> None:
         # La tarjeta del primer lugar tiene borde brillante y tamaño mayor
         if i == 0:
             card_style = (
-                f"background:#ffffff;border-radius:16px;"
+                f"background:var(--secondary-background-color);border-radius:16px;"
                 f"border:2px solid {color};"
                 f"box-shadow:0 0 0 4px {color}22, 0 4px 20px rgba(0,0,0,0.10);"
                 f"padding:24px;position:relative;grid-row:span 1;"
@@ -283,8 +283,8 @@ def render_recomendacion(ubicaciones: list) -> None:
             )
         else:
             card_style = (
-                f"background:#ffffff;border-radius:14px;"
-                f"border:1px solid #e2e8f0;"
+                f"background:var(--secondary-background-color);border-radius:14px;"
+                f"border:1px solid rgba(128,128,128,0.2);"
                 f"box-shadow:0 2px 8px rgba(0,0,0,0.06);"
                 f"padding:20px;position:relative;"
             )
@@ -293,22 +293,22 @@ def render_recomendacion(ubicaciones: list) -> None:
         # Barra de progreso del puntaje total
         pct = round((total / 90) * 100)
         progress_bar = (
-            f'<div style="background:#f1f5f9;border-radius:99px;height:6px;margin:10px 0 14px;">'
+            f'<div style="background:rgba(128,128,128,0.15);border-radius:99px;height:6px;margin:10px 0 14px;">'
             f'<div style="background:{color};width:{pct}%;height:6px;border-radius:99px;"></div>'
             f'</div>'
         )
 
         # Descripción breve (si existe)
         desc_html = (
-            f'<p style="color:#64748b;font-size:0.82rem;margin:0 0 10px;line-height:1.5;">{descripcion}</p>'
+            f'<p style="color:var(--text-color);opacity:0.6;font-size:0.82rem;margin:0 0 10px;line-height:1.5;">{descripcion}</p>'
             if descripcion else ""
         )
 
         # Texto de recomendación
         rec_html = (
-            f'<div style="background:#f8fafc;border-left:3px solid {color};'
+            f'<div style="background:var(--background-color);border-left:3px solid {color};'
             f'border-radius:0 8px 8px 0;padding:10px 14px;'
-            f'color:#374151;font-size:0.85rem;line-height:1.6;">'
+            f'color:var(--text-color);font-size:0.85rem;line-height:1.6;">'
             f'{recomendacion}</div>'
         )
 
@@ -318,7 +318,7 @@ def render_recomendacion(ubicaciones: list) -> None:
             f'<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">'
             f'<span style="font-size:1.6rem;">{medalla}</span>'
             f'<div>'
-            f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{nombre}</div>'
+            f'<div style="font-weight:700;font-size:1rem;color:var(--text-color);">{nombre}</div>'
             f'<div style="font-size:0.8rem;color:{color};font-weight:600;">{total}/90 puntos</div>'
             f'</div>'
             f'</div>'
@@ -402,8 +402,8 @@ def render_escenario(escenario: dict) -> None:
     with col4:
         color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
         st.markdown(
-            f'<div style="background:#f0f2f6;border-radius:8px;padding:12px 16px;">'
-            f'<div style="font-size:0.85rem;color:#555;margin-bottom:4px;">📈 Utilidad neta / mes</div>'
+            f'<div style="background:var(--secondary-background-color);border-radius:8px;padding:12px 16px;">'
+            f'<div style="font-size:0.85rem;color:var(--text-color);opacity:0.7;margin-bottom:4px;">📈 Utilidad neta / mes</div>'
             f'<div style="font-size:1.6rem;font-weight:700;color:{color_utilidad};">'
             f'{_fmt_moneda(utilidad)}</div>'
             f'</div>',
@@ -489,9 +489,9 @@ def render_metricas(escenario: dict, ajustes: dict) -> None:
     margen_pct = (margen_contrib / precio * 100) if precio > 0 else 0.0
 
     st.markdown(
-        '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;'
+        '<div style="background:var(--secondary-background-color);border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
         'padding:20px 24px;margin-top:8px;">'
-        '<div style="font-weight:700;color:#0f172a;font-size:0.95rem;margin-bottom:14px;">'
+        '<div style="font-weight:700;color:var(--text-color);font-size:0.95rem;margin-bottom:14px;">'
         '🔄 Métricas recalculadas con tus ajustes</div>',
         unsafe_allow_html=True,
     )
@@ -536,46 +536,45 @@ def render_metricas(escenario: dict, ajustes: dict) -> None:
 def render_foda(foda: dict) -> None:
     """
     Renderiza el análisis FODA en cuatro columnas con el mismo estilo de cards
-    que render_recomendacion().
+    que render_recomendacion(). Los items son editables por el usuario.
 
     Args:
         foda: dict con claves 'fortalezas', 'oportunidades', 'debilidades', 'amenazas'.
              Cada valor es una lista de strings.
     """
     st.subheader("🔍 Análisis FODA")
+    st.caption("Puedes editar cada sección del FODA directamente.")
 
-    columnas_html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:8px;">'
-
-    for clave, meta in _FODA_META.items():
+    cols = st.columns(4)
+    for col, (clave, meta) in zip(cols, _FODA_META.items()):
         items = foda.get(clave, [])
         color = meta["color"]
-        bg = meta["bg"]
         emoji = meta["emoji"]
         label = meta["label"]
 
-        # Lista de items como bullets estilizados
-        items_html = "".join(
-            f'<li style="margin-bottom:6px;color:#374151;font-size:0.85rem;line-height:1.5;">'
-            f'{item}</li>'
-            for item in items
-        ) or '<li style="color:#94a3b8;font-size:0.85rem;">Sin datos</li>'
-
-        columnas_html += (
-            f'<div style="background:#ffffff;border-radius:14px;'
-            f'border:1px solid {color}44;'
-            f'box-shadow:0 2px 8px rgba(0,0,0,0.05);padding:18px;">'
-            f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">'
-            f'<span style="display:inline-flex;align-items:center;justify-content:center;'
-            f'width:32px;height:32px;background:{bg};border-radius:8px;font-size:1rem;">'
-            f'{emoji}</span>'
-            f'<span style="font-weight:700;font-size:0.9rem;color:{color};">{label}</span>'
-            f'</div>'
-            f'<ul style="margin:0;padding-left:16px;">{items_html}</ul>'
-            f'</div>'
-        )
-
-    columnas_html += "</div>"
-    st.markdown(columnas_html, unsafe_allow_html=True)
+        with col:
+            # Encabezado de la tarjeta
+            st.markdown(
+                f'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+                f'<span style="font-size:1.2rem;">{emoji}</span>'
+                f'<span style="font-weight:700;font-size:0.9rem;color:{color};">{label}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+            # Área de texto editable — una línea por item
+            default_text = "\n".join(items) if items else ""
+            edited = st.text_area(
+                label=label,
+                value=default_text,
+                height=160,
+                key=f"foda_{clave}",
+                label_visibility="collapsed",
+                help=f"Un punto por línea",
+            )
+            # Guardar en session_state para que persista y pueda usarse después
+            st.session_state.setdefault("foda_editable", {})[clave] = [
+                line.strip() for line in edited.splitlines() if line.strip()
+            ]
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -631,24 +630,26 @@ def render_deuda(escenario: dict, deuda: dict) -> None:
     mrc_con_deuda = (capital / utilidad_con_deuda) if utilidad_con_deuda > 0 else None
 
     # ── Resumen del crédito ──────────────────────────────────────────────────
+    _label_style = 'font-size:0.75rem;color:var(--text-color);opacity:0.6;'
+    _val_style = f'font-weight:700;font-size:1rem;color:var(--text-color);'
     st.markdown(
-        f'<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;'
+        f'<div style="background:var(--secondary-background-color);border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
         f'padding:18px 24px;margin-bottom:16px;">'
-        f'<div style="font-weight:700;color:#0f172a;font-size:0.9rem;margin-bottom:10px;">'
+        f'<div style="font-weight:700;color:var(--text-color);font-size:0.9rem;margin-bottom:10px;">'
         f'📄 Resumen del crédito</div>'
         f'<div style="display:flex;flex-wrap:wrap;gap:24px;">'
-        f'<div><div style="font-size:0.75rem;color:#64748b;">Monto solicitado</div>'
-        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{_fmt_moneda(monto)}</div></div>'
-        f'<div><div style="font-size:0.75rem;color:#64748b;">Tasa anual</div>'
-        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{tasa_anual:.2f}%</div></div>'
-        f'<div><div style="font-size:0.75rem;color:#64748b;">Plazo</div>'
-        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{plazo} meses</div></div>'
-        f'<div><div style="font-size:0.75rem;color:#64748b;">Pago mensual</div>'
+        f'<div><div style="{_label_style}">Monto solicitado</div>'
+        f'<div style="{_val_style}">{_fmt_moneda(monto)}</div></div>'
+        f'<div><div style="{_label_style}">Tasa anual</div>'
+        f'<div style="{_val_style}">{tasa_anual:.2f}%</div></div>'
+        f'<div><div style="{_label_style}">Plazo</div>'
+        f'<div style="{_val_style}">{plazo} meses</div></div>'
+        f'<div><div style="{_label_style}">Pago mensual</div>'
         f'<div style="font-weight:700;font-size:1rem;color:#2563eb;">{_fmt_moneda(pago_mensual)}</div></div>'
-        f'<div><div style="font-size:0.75rem;color:#64748b;">Total intereses</div>'
+        f'<div><div style="{_label_style}">Total intereses</div>'
         f'<div style="font-weight:700;font-size:1rem;color:#d97706;">{_fmt_moneda(total_intereses)}</div></div>'
-        f'<div><div style="font-size:0.75rem;color:#64748b;">Total a pagar</div>'
-        f'<div style="font-weight:700;font-size:1rem;color:#0f172a;">{_fmt_moneda(total_pagado)}</div></div>'
+        f'<div><div style="{_label_style}">Total a pagar</div>'
+        f'<div style="{_val_style}">{_fmt_moneda(total_pagado)}</div></div>'
         f'</div></div>',
         unsafe_allow_html=True,
     )
