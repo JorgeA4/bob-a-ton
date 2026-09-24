@@ -22,40 +22,50 @@ streamlit run app.py
 / (repo root — all code lives here)
 ├── app.py                          # Streamlit entry point
 ├── ui/
-│   └── components.py               # All visual components — Phase 1 and Phase 2
+│   └── components.py               # All visual components — Phases 1, 2, and 3
 ├── ai/
 │   ├── gemini_client.py            # get_locations(giro, capital, ciudad, zona_preferida) → raw JSON str
 │   ├── prompt_builder.py           # Phase 1 prompt
-│   └── scenario_client.py          # get_scenario(giro, capital, ciudad, ubicacion) → raw JSON str
+│   ├── scenario_client.py          # get_scenario(giro, capital, ciudad, ubicacion) → raw JSON str
+│   └── vulnerability_client.py     # get_vulnerability_analysis(...) → raw JSON str  [Phase 3]
 ├── core/
 │   ├── models.py                   # Criterio, Ubicacion, RespuestaIA dataclasses
 │   ├── parser.py                   # parse_response(str) → List[dict]
-│   └── scenario_parser.py          # parse_scenario(str) → dict
+│   ├── scenario_parser.py          # parse_scenario(str) → dict
+│   ├── vulnerability_analyzer.py   # analizar_vulnerabilidades(...) → list[dict]  [Phase 3, pure logic]
+│   └── vulnerability_parser.py     # parse_vulnerability(str) → dict  [Phase 3]
 ├── tests/                          # Mock data and test helpers — do not use in production
-│   ├── mock_client.py              # get_mock_locations() / get_mock_scenario() — drop-in replacements for AI calls
+│   ├── mock_client.py              # get_mock_locations() / get_mock_scenario() / get_mock_vulnerability()
 │   ├── mock_ubicaciones.json       # 5 example zones for Tijuana (Phase 1 response shape)
-│   └── mock_escenario.json         # Example financial scenario for Zona Río (Phase 2 response shape)
+│   ├── mock_escenario.json         # Example financial scenario for Zona Río (Phase 2 response shape)
+│   └── mock_vulnerabilidad.json    # Example vulnerability analysis (Phase 3 response shape)
 ├── fase2/
 │   └── AI_INSTRUCTIONS_ESCENARIO.md  # Prompt/instructions reference for Phase 2 scenario
 ├── requirements.txt
 ├── .env.example
 └── fases_plans/                    # Planning docs only — NO code here
     ├── PLANNING_fase1.md
-    └── PLANNING_fase2.md
+    ├── PLANNING_fase2.md
+    └── PLANNING_fase3.md
 ```
 
 ## Hard contracts — do not break
 
 - `ai.gemini_client.get_locations()` returns **raw JSON string** — never parses.
 - `ai.scenario_client.get_scenario()` returns **raw JSON string** — never parses.
+- `ai.vulnerability_client.get_vulnerability_analysis()` returns **raw JSON string** — never parses.
 - `core.parser.parse_response(raw) -> List[dict]` — not `List[Ubicacion]`, plain dicts.
 - `core.scenario_parser.parse_scenario(raw) -> dict` — plain dict, not a dataclass.
+- `core.vulnerability_parser.parse_vulnerability(raw) -> dict` — plain dict, not a dataclass.
+- `core.vulnerability_analyzer.analizar_vulnerabilidades(escenario_activo, deuda, criterios_ubicacion) -> list[dict]` — pure function, no Streamlit imports, never raises on missing keys (uses `.get()` with safe defaults).
 - `load_dotenv()` called only in `gemini_client.py` — `.env` path is `parents[1]` (repo root).
 - `scenario_client.py` calls `_ensure_configured()` (idempotent load_dotenv + genai.configure) — do not assume gemini_client was imported first.
+- `vulnerability_client.py` also calls `_ensure_configured()` with the same pattern — do not assume any other AI module was imported first.
 - `parser.py` computes `nivel` from `puntaje` via `_nivel_from_puntaje()`; the AI never returns `nivel` in criteria objects.
 - `CRITERIOS_INVERTIDOS = {"costo_renta", "compatibilidad_capital"}` — for these two, high puntaje means low cost (good), so the level label and UI colour are inverted.
 - `parse_response()` detects an unrecognised-giro signal: if the root JSON contains an `"error"` key it raises `ValueError` with the `"mensaje"` value — never returns a partial list.
 - Currency conversion: when the user inputs capital in USD, `app.py` fetches a live rate from `api.frankfurter.app` and converts to MXN **before** storing. `st.session_state["capital"]` is **always in MXN**, regardless of the currency selected in the form.
+- Phase 3 criteria lookup: `app.py` resolves the chosen location's criteria by searching `session_state["ubicaciones"]` for the dict whose `nombre == session_state["ubicacion_elegida"]` — no separate session_state key is created for this.
 
 ## session_state keys
 
@@ -74,12 +84,18 @@ streamlit run app.py
 | `escenario_madurez` | `str` | Active maturity scenario: `"pesimista"`, `"moderado"`, or `"optimista"` (default `"moderado"`) |
 | `_moneda_form` | `str` | Currency selected in the form radio (`"MXN"` or `"USD"`); managed by Streamlit widget state |
 | `_deuda_sugerida` | `float` | Transient key — pre-fills debt amount input with `inversion_inicial − capital` when debt is auto-activated; consumed (popped) on first render |
+| `fase3_activa` | `bool` | `True` once the user requests the vulnerability analysis; collapses Phase 2 into a closed expander |
+| `escenario_congelado` | `dict` | Snapshot of `_escenario_activo` at the moment the Phase 3 button is pressed — immutable from that point |
+| `deuda_congelada` | `dict \| None` | Snapshot of `_deuda_dict` at the moment the Phase 3 button is pressed |
+| `analisis_vulnerabilidades` | `dict` | Parsed result from `parse_vulnerability()` — contains `resumen_ejecutivo`, `riesgos_cuantificables`, `riesgos_contextuales`, `veredicto` |
 
 Notes:
 - `foda` and `deuda` are **not** standalone session_state keys. FODA data lives inside `escenario["foda"]`; debt inputs are built inline in `app.py` and passed as a `deuda` dict directly to `render_madurez()`.
 - All Phase 2 toggle keys (`modo_edicion_escenario`, `mostrar_foda`, `mostrar_deuda`) are cleared whenever a new Phase 1 analysis is submitted or a new location is confirmed.
 - `escenario_madurez` persists between re-renders — it is NOT cleared on new analysis (the user's scenario selection is intentional). Clear it manually if needed.
 - When a new scenario is generated, if `inversion_inicial > capital` the debt panel opens automatically with the shortfall pre-filled in `_deuda_sugerida`. `_deuda_sugerida` is a one-shot key — it is popped on the first render so subsequent user edits to the amount are not overwritten.
+- All Phase 3 keys (`fase3_activa`, `escenario_congelado`, `deuda_congelada`, `analisis_vulnerabilidades`) are cleared whenever a new Phase 1 analysis is submitted or a new location is confirmed — same cleanup pass as Phase 2 keys.
+- `escenario_congelado` and `deuda_congelada` are snapshots — they must never be mutated after being set. All Phase 3 logic reads from these frozen copies, not from the live Phase 2 widgets.
 
 ## Phase 2 financial metrics (computed in frontend, no AI call)
 
@@ -125,16 +141,54 @@ Notes:
 
 `costos_fijos_mes` y `costos_variables_mes` **no los devuelve Gemini** — `parse_scenario()` los calcula sumando los montos del desglose correspondiente y los añade al dict resultado. Los consumidores (`render_escenario`, `render_madurez`) los reciben normalmente.
 
+## Phase 3 vulnerability analysis
+
+- `core.vulnerability_analyzer.analizar_vulnerabilidades()` evaluates 12 deterministic numeric rules against the frozen scenario (moderate scenario, no multipliers) and returns `list[dict]` ordered by severity: `"critica"` → `"alta"` → `"media"`. Returns `[]` if no issues are found — that is a valid result.
+- Each alert dict shape: `{"severidad": str, "categoria": str, "titulo": str, "detalle": str, "datos": dict}`. The `datos` key carries raw numeric values used in the evaluation (for prompt precision).
+- `ai.vulnerability_client.get_vulnerability_analysis()` receives the full frozen context (escenario_congelado, deuda_congelada, criterios_ubicacion, alertas_numericas) and builds a single prompt. The prompt explicitly tells Gemini the numeric alerts are already identified — it must not repeat them, only deepen their implication or add what numbers alone cannot capture.
+- Phase 3 JSON schema returned by Gemini: `{resumen_ejecutivo: str, riesgos_cuantificables: [{titulo, descripcion, severidad, mitigacion}], riesgos_contextuales: [{titulo, descripcion, severidad, fuente, mitigacion}], veredicto: str}`. `fuente` must be one of `"foda" | "zona" | "giro" | "deuda"`. `veredicto` must be one of `"viable" | "viable_con_reservas" | "riesgo_alto" | "no_viable"`.
+- `core.vulnerability_parser.parse_vulnerability()` validates the above schema strictly — raises `ValueError` on any missing key or invalid enum value.
+- `ui.components.render_vulnerabilidades(alertas_numericas, analisis_ia)` renders: header + veredicto badge → numeric alert cards (if any) → quantifiable risk cards → contextual risk cards. If both numeric and quantifiable lists are empty, shows a positive confirmation message.
+- The vulnerability math (capital quemado, break-even via exponential curve) is duplicated inside `vulnerability_analyzer.py` — do **not** import `ui/components.py` from `core/`.
+
+## Phase 3 JSON schema (returned by `get_vulnerability_analysis()`, validated by `parse_vulnerability()`)
+
+```json
+{
+  "resumen_ejecutivo": "str",
+  "riesgos_cuantificables": [
+    {
+      "titulo": "str",
+      "descripcion": "str",
+      "severidad": "critica | alta | media",
+      "mitigacion": "str"
+    }
+  ],
+  "riesgos_contextuales": [
+    {
+      "titulo": "str",
+      "descripcion": "str",
+      "severidad": "alta | media | baja",
+      "fuente": "foda | zona | giro | deuda",
+      "mitigacion": "str"
+    }
+  ],
+  "veredicto": "viable | viable_con_reservas | riesgo_alto | no_viable"
+}
+```
+
 ## Code style
 
 - `@dataclass` models in `core/models.py`; parsers always return plain `dict`/`List[dict]`, never dataclasses.
 - Parsers raise `ValueError` with descriptive messages on missing keys; never silently return `None`.
-- `st.session_state` is the only state bridge between Phases 1 and 2.
+- `core/vulnerability_analyzer.py` is a pure module — no Streamlit imports, no side effects, safe `.get()` calls throughout.
+- `st.session_state` is the only state bridge between phases.
 
 ## Test / mock mode
 
-- `tests/mock_client.py` provides `get_mock_locations()` and `get_mock_scenario(ubicacion)` as drop-in replacements for the real AI calls.
-- Mock data lives in `tests/mock_ubicaciones.json` (Phase 1 shape) and `tests/mock_escenario.json` (Phase 2 shape).
-- The test button and its imports are delimited by `# ── TEST` / `# ── FIN TEST` comments in `app.py` — remove those blocks and swap back `get_scenario(...)` to disable mock mode.
+- `tests/mock_client.py` provides `get_mock_locations()`, `get_mock_scenario(ubicacion)`, and `get_mock_vulnerability()` as drop-in replacements for the real AI calls.
+- Mock data lives in `tests/mock_ubicaciones.json` (Phase 1 shape), `tests/mock_escenario.json` (Phase 2 shape), and `tests/mock_vulnerabilidad.json` (Phase 3 shape).
+- All test calls and their imports are delimited by `# ── TEST` / `# ── FIN TEST` comments in `app.py` — remove those blocks and swap back real calls to disable mock mode.
 - `tests/` files must never be imported outside of the clearly marked test blocks in `app.py`.
 - `tests/mock_escenario.json` must always match the shape validated by `core/scenario_parser.py`. When the Phase 2 JSON schema changes, update both the parser and the mock together.
+- `tests/mock_vulnerabilidad.json` must always match the shape validated by `core/vulnerability_parser.py`. When the Phase 3 JSON schema changes, update both the parser and the mock together.
