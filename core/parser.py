@@ -6,7 +6,43 @@ from core.models import Criterio, Ubicacion, RespuestaIA
 # Claves requeridas en cada nivel del JSON
 _CLAVES_RAIZ = {"ciudad", "giro", "capital", "ubicaciones"}
 _CLAVES_UBICACION = {"id", "nombre", "descripcion_breve", "criterios", "puntaje_total", "recomendacion_ia"}
-_CLAVES_CRITERIO = {"nivel", "puntaje", "nota"}
+_CLAVES_CRITERIO = {"puntaje", "nota"}
+
+# Criterios donde el puntaje representa bondad pero el nivel debe reflejar
+# la magnitud real del coste: puntaje alto (accesible) → nivel "bajo" (renta baja).
+CRITERIOS_INVERTIDOS = {"costo_renta", "compatibilidad_capital"}
+
+
+def _nivel_from_puntaje(puntaje: float, clave: str) -> str:
+    """
+    Deriva el nivel cualitativo a partir del puntaje numérico (1–10).
+
+    Criterios normales: puntaje alto → nivel alto (ej. flujo_peatonal 9 → "muy alto").
+    Criterios invertidos (costo_renta, compatibilidad_capital): el puntaje mide bondad
+    pero el nivel describe la magnitud real del costo, invertida:
+        puntaje 9 (renta accesible)  → nivel "bajo"    (renta baja)
+        puntaje 2 (renta cara)       → nivel "muy alto" (renta muy alta)
+    El color en la UI se asigna por bondad (puntaje), no por nivel literal.
+    """
+    if clave in CRITERIOS_INVERTIDOS:
+        # Invertir: puntaje alto → magnitud baja
+        if puntaje >= 8:
+            return "bajo"
+        elif puntaje >= 6:
+            return "medio"
+        elif puntaje >= 4:
+            return "alto"
+        else:
+            return "muy alto"
+    else:
+        if puntaje >= 8:
+            return "muy alto"
+        elif puntaje >= 6:
+            return "alto"
+        elif puntaje >= 4:
+            return "medio"
+        else:
+            return "bajo"
 
 # Los 9 criterios que deben estar presentes en cada ubicación
 _CRITERIOS_ESPERADOS = {
@@ -94,9 +130,10 @@ def parse_response(json_str: str) -> List[dict]:
                     f"{contexto_u}.criterios.{clave} debe ser un objeto, se recibió: {type(c).__name__}"
                 )
             _validar_claves(c, _CLAVES_CRITERIO, f"{contexto_u}.criterios.{clave}")
+            puntaje = float(c["puntaje"])
             criterios_validados[clave] = {
-                "nivel": str(c["nivel"]),
-                "puntaje": float(c["puntaje"]),
+                "nivel": _nivel_from_puntaje(puntaje, clave),
+                "puntaje": puntaje,
                 "nota": str(c["nota"]),
             }
 
