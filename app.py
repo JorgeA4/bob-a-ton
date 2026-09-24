@@ -12,7 +12,6 @@ from ui.components import (
     render_recomendacion,
     # Fase 2
     render_escenario,
-    render_metricas,
     render_foda,
     render_deuda,
 )
@@ -247,7 +246,7 @@ if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
     st.session_state["capital"] = 150000
     st.session_state["ciudad"] = "Tijuana"
     st.session_state["zona_preferida"] = ""
-    for key in ("escenario", "ubicacion_elegida", "mostrar_ajustes",
+    for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
                 "mostrar_foda", "mostrar_deuda"):
         st.session_state.pop(key, None)
     st.rerun()
@@ -302,7 +301,7 @@ if submitted:
         st.session_state["ciudad"] = ciudad.strip()
 
         # Limpiar estado de Fase 2 si el usuario hace un nuevo análisis
-        for key in ("escenario", "ubicacion_elegida", "mostrar_ajustes",
+        for key in ("escenario", "ubicacion_elegida", "modo_edicion_escenario",
                     "mostrar_foda", "mostrar_deuda"):
             st.session_state.pop(key, None)
 
@@ -378,7 +377,7 @@ if "ubicaciones" in st.session_state:
     if confirmar:
         st.session_state["ubicacion_elegida"] = seleccion
         # Limpiar estado derivado para forzar nuevo análisis con la nueva ubicación
-        for key in ("escenario", "mostrar_ajustes", "mostrar_foda", "mostrar_deuda"):
+        for key in ("escenario", "modo_edicion_escenario", "mostrar_foda", "mostrar_deuda"):
             st.session_state.pop(key, None)
 
         _giro = st.session_state.get("giro", "")
@@ -409,71 +408,12 @@ if "ubicaciones" in st.session_state:
     # ── Mostrar escenario si ya fue generado ──────────────────────────────────
     if "escenario" in st.session_state:
         _escenario = st.session_state["escenario"]
+        _modo_edicion = st.session_state.get("modo_edicion_escenario", False)
 
         st.markdown("<hr>", unsafe_allow_html=True)
-        render_escenario(_escenario)
-
-        # ── Botón: Ajustar escenario ─────────────────────────────────────────
-        st.markdown("<div style='margin-top:16px;'></div>", unsafe_allow_html=True)
-        if st.button("✏️ Ajustar escenario", key="btn_ajustes"):
-            st.session_state["mostrar_ajustes"] = not st.session_state.get(
-                "mostrar_ajustes", False
-            )
-
-        if st.session_state.get("mostrar_ajustes", False):
-            st.markdown(
-                '<div style="background:var(--secondary-background-color);'
-                'border:1px solid rgba(128,128,128,0.25);'
-                'border-radius:12px;padding:20px 24px;margin-top:8px;">',
-                unsafe_allow_html=True,
-            )
-            st.markdown("**⚙️ Ajusta las variables del escenario**", unsafe_allow_html=False)
-
-            # Controles fuera de st.form → recálculo inmediato en cada cambio
-            aj_col1, aj_col2, aj_col3, aj_col4 = st.columns(4)
-            with aj_col1:
-                aj_ingresos = st.number_input(
-                    "Ingresos / mes (MXN)",
-                    min_value=0.0,
-                    step=1000.0,
-                    value=float(_escenario.get("ingresos_estimados_mes", 0.0)),
-                    key="aj_ingresos",
-                )
-            with aj_col2:
-                aj_fijos = st.number_input(
-                    "Costos fijos / mes (MXN)",
-                    min_value=0.0,
-                    step=500.0,
-                    value=float(_escenario.get("costos_fijos_mes", 0.0)),
-                    key="aj_fijos",
-                )
-            with aj_col3:
-                aj_variables = st.number_input(
-                    "Costos variables / mes (MXN)",
-                    min_value=0.0,
-                    step=500.0,
-                    value=float(_escenario.get("costos_variables_mes", 0.0)),
-                    key="aj_variables",
-                )
-            with aj_col4:
-                aj_precio = st.number_input(
-                    "Precio unitario promedio (MXN)",
-                    min_value=0.0,
-                    step=10.0,
-                    value=float(_escenario.get("precio_unitario_promedio", 0.0)),
-                    key="aj_precio",
-                )
-
-            st.markdown("</div>", unsafe_allow_html=True)
-
-            # Render de métricas recalculadas — se actualiza en tiempo real
-            ajustes = {
-                "ingresos_estimados_mes": aj_ingresos,
-                "costos_fijos_mes": aj_fijos,
-                "costos_variables_mes": aj_variables,
-                "precio_unitario_promedio": aj_precio,
-            }
-            render_metricas(_escenario, ajustes)
+        # render_escenario devuelve los valores activos (base o ajustados)
+        # para que render_deuda use los mismos números que ve el usuario
+        _escenario_activo = render_escenario(_escenario, modo_edicion=_modo_edicion)
 
         # ── Botón: FODA ───────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
@@ -535,4 +475,4 @@ if "ubicaciones" in st.session_state:
                 "tasa_anual": d_tasa,
                 "plazo_meses": int(d_plazo),
             }
-            render_deuda(_escenario, deuda)
+            render_deuda(_escenario_activo, deuda)

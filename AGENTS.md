@@ -69,7 +69,7 @@ streamlit run app.py
 | `zona_preferida` | `str` | Optional preferred zone submitted in the form |
 | `ubicacion_elegida` | `str` | Name of the location selected for Phase 2 |
 | `escenario` | `dict` | Parsed scenario from `parse_scenario()` — includes `foda` sub-dict |
-| `mostrar_ajustes` | `bool` | Toggle for the scenario-adjustment panel |
+| `modo_edicion_escenario` | `bool` | Toggle for inline edit mode in the P&L (replaces the old separate adjust panel) |
 | `mostrar_foda` | `bool` | Toggle for the FODA panel |
 | `mostrar_deuda` | `bool` | Toggle for the debt-financing panel |
 | `_moneda_form` | `str` | Currency selected in the form radio (`"MXN"` or `"USD"`); managed by Streamlit widget state |
@@ -81,7 +81,7 @@ Notes:
 ## Phase 2 financial metrics (computed in frontend, no AI call)
 
 - Gemini returns pre-computed `ingresos_estimados_mes`, `costos_fijos_mes`, `costos_variables_mes`, `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario` — all floats, MXN/month.
-- The adjust panel lets the user override those values; `render_metricas()` recalculates in real time.
+- The adjust panel is inline in `render_escenario()` (toggle via `modo_edicion_escenario` session state key); viability KPIs recalculate in real time with the edited values.
 - Pago deuda mensual = French amortisation formula (applied in `render_deuda()`).
 - Viability semaphore: 🔴 utilidad ≤ 0 · 🟡 recuperación > 24 meses · 🟢 recuperación ≤ 24 meses
 

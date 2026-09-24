@@ -465,44 +465,43 @@ def _kpi_card(emoji: str, titulo: str, valor: str, color: str, subtitulo: str = 
     )
 
 
-def render_escenario(escenario: dict) -> None:
+def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
     """
     Muestra el escenario financiero como informe vertical en tres bloques:
-      1. Estado de resultados mensual (P&L) con desglose de costos
-      2. Métricas de viabilidad con semáforo
+      1. Estado de resultados mensual (P&L) — editable inline cuando modo_edicion=True
+      2. Métricas de viabilidad con semáforo (recalculadas en tiempo real)
       3. Supuestos unitarios del modelo
 
     Args:
         escenario: dict validado devuelto por core.scenario_parser.parse_scenario().
-    """
-    ubicacion = escenario.get("ubicacion", "—")
-    st.subheader(f"📋 Escenario financiero — {ubicacion}")
+        modo_edicion: si True, las filas del P&L se convierten en number_inputs inline.
 
-    ingresos   = escenario.get("ingresos_estimados_mes", 0.0)
-    fijos      = escenario.get("costos_fijos_mes", 0.0)
-    variables  = escenario.get("costos_variables_mes", 0.0)
-    utilidad   = escenario.get("utilidad_neta_mes", 0.0)
-    mrc        = escenario.get("meses_recuperacion_capital")
-    pe         = escenario.get("punto_equilibrio_unidades", 0.0)
-    precio     = escenario.get("precio_unitario_promedio", 0.0)
-    costo_unit = escenario.get("costo_variable_unitario", 0.0)
+    Returns:
+        dict con los valores activos (base o ajustados por el usuario), con las mismas
+        claves que el escenario original. Útil para pasar a render_deuda().
+    """
+    ubicacion  = escenario.get("ubicacion", "—")
     capital    = escenario.get("capital", 0.0)
+    costo_unit = escenario.get("costo_variable_unitario", 0.0)
     df         = escenario.get("desglose_fijos")
     dv         = escenario.get("desglose_variables")
 
-    margen_pct = ((precio - costo_unit) / precio * 100) if precio > 0 else 0.0
-    color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
+    # Valores base de la IA (nunca se modifican — son la referencia)
+    _base_ingresos  = float(escenario.get("ingresos_estimados_mes", 0.0))
+    _base_fijos     = float(escenario.get("costos_fijos_mes", 0.0))
+    _base_variables = float(escenario.get("costos_variables_mes", 0.0))
+    _base_precio    = float(escenario.get("precio_unitario_promedio", 0.0))
 
-    # ── Semáforo de recuperación ──────────────────────────────────────────────
-    if utilidad <= 0 or mrc is None:
-        semaforo = "🔴"
-        semaforo_color = _COLOR_NEGATIVO
-    elif mrc > 24:
-        semaforo = "🟡"
-        semaforo_color = _COLOR_ADVERTENCIA
-    else:
-        semaforo = "🟢"
-        semaforo_color = _COLOR_POSITIVO
+    # ── Cabecera: título + botón ✏️ ───────────────────────────────────────────
+    hdr_left, hdr_right = st.columns([8, 2])
+    with hdr_left:
+        st.subheader(f"📋 Escenario financiero — {ubicacion}")
+    with hdr_right:
+        st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+        _btn_label = "✅ Ver informe" if modo_edicion else "✏️ Ajustar valores"
+        if st.button(_btn_label, key="btn_modo_edicion", use_container_width=True):
+            st.session_state["modo_edicion_escenario"] = not modo_edicion
+            st.rerun()
 
     # ══════════════════════════════════════════════════════════════════════════
     # BLOQUE 1 — Estado de resultados + BLOQUE 2 — Viabilidad (lado a lado)
@@ -510,53 +509,136 @@ def render_escenario(escenario: dict) -> None:
     pl_col, gap_col, kpi_col = st.columns([5, 1, 4])
 
     with pl_col:
-        st.markdown(
+        titulo_pl = (
             '<div style="font-size:0.7rem;font-weight:700;letter-spacing:.09em;'
             'color:var(--text-color);opacity:0.45;margin-bottom:8px;text-transform:uppercase;">'
-            'Estado de resultados · mensual</div>',
-            unsafe_allow_html=True,
         )
+        if modo_edicion:
+            st.markdown(
+                titulo_pl + 'Estado de resultados · ajuste manual</div>',
+                unsafe_allow_html=True,
+            )
 
-        # Fila ingresos
-        rows_html = _pl_row(
-            "Ingresos estimados", _fmt_moneda(ingresos), _COLOR_NEUTRO,
-            help_text="Proyección mensual de ventas estimada por la IA para este giro y ubicación.",
-        )
+            # ── Modo edición: inputs dentro de la tarjeta ─────────────────────
+            st.markdown(
+                '<div style="background:var(--secondary-background-color);'
+                'border:2px solid #2563eb44;border-radius:14px;padding:20px 24px;">',
+                unsafe_allow_html=True,
+            )
 
-        # Fila costos fijos + desglose opcional
-        rows_html += _pl_row(
-            "Costos fijos", _fmt_moneda(fijos), "var(--text-color)", indent=1,
-            help_text="Gastos fijos mensuales que se pagan independientemente de cuánto vendas: renta, nómina base, servicios.",
-        )
-        if df:
-            rows_html += _pl_desglose(df, _LABELS_FIJOS)
+            inp_col1, inp_col2 = st.columns(2)
+            with inp_col1:
+                ingresos = st.number_input(
+                    "Ingresos estimados",
+                    min_value=0.0, step=1000.0,
+                    value=_base_ingresos,
+                    key="escenario_ingresos",
+                    help="Proyección mensual de ventas.",
+                )
+                fijos = st.number_input(
+                    "Costos fijos",
+                    min_value=0.0, step=500.0,
+                    value=_base_fijos,
+                    key="escenario_fijos",
+                    help="Renta, nómina base, servicios — independientes del volumen de ventas.",
+                )
+            with inp_col2:
+                variables = st.number_input(
+                    "Costos variables",
+                    min_value=0.0, step=500.0,
+                    value=_base_variables,
+                    key="escenario_variables",
+                    help="Insumos, comisiones, empaque — proporcionales a las ventas.",
+                )
+                precio = st.number_input(
+                    "Precio unitario promedio",
+                    min_value=0.0, step=10.0,
+                    value=_base_precio,
+                    key="escenario_precio",
+                    help="Precio de venta promedio por producto o servicio.",
+                )
 
-        # Fila costos variables + desglose opcional
-        rows_html += _pl_row(
-            "Costos variables", _fmt_moneda(variables), "var(--text-color)", indent=1,
-            help_text="Gastos que crecen con el volumen de ventas: materia prima, insumos, comisiones.",
-        )
-        if dv:
-            rows_html += _pl_desglose(dv, _LABELS_VARIABLES)
+            # Recalcular con los valores editados
+            utilidad = ingresos - fijos - variables
+            margen_contrib = precio - costo_unit
+            pe = (fijos / margen_contrib) if margen_contrib > 0 else 0.0
+            mrc = (capital / utilidad) if utilidad > 0 else None
 
-        # Fila utilidad (total)
-        rows_html += _pl_row(
-            "Utilidad neta", _fmt_moneda(utilidad), color_utilidad,
-            is_total=True,
-            help_text="Lo que queda después de restar todos los costos a los ingresos. Si es negativa, el negocio pierde dinero ese mes.",
-        )
+            # Fila de resultado inline
+            color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
+            delta_utilidad = utilidad - (_base_ingresos - _base_fijos - _base_variables)
+            delta_sign = "+" if delta_utilidad >= 0 else ""
+            delta_color = _COLOR_POSITIVO if delta_utilidad >= 0 else _COLOR_NEGATIVO
+            st.markdown(
+                f'<div style="border-top:2px solid rgba(128,128,128,0.2);'
+                f'margin-top:8px;padding-top:12px;'
+                f'display:flex;justify-content:space-between;align-items:baseline;">'
+                f'<span style="font-size:1rem;font-weight:700;color:var(--text-color);">'
+                f'Utilidad neta</span>'
+                f'<span>'
+                f'<span style="font-size:1rem;font-weight:700;color:{color_utilidad};">'
+                f'{_fmt_moneda(utilidad)}</span>'
+                f'<span style="font-size:0.75rem;color:{delta_color};margin-left:8px;">'
+                f'({delta_sign}{_fmt_moneda(delta_utilidad)} vs. IA)</span>'
+                f'</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
-        st.markdown(
-            f'<div style="background:var(--secondary-background-color);'
-            f'border:1px solid rgba(128,128,128,0.2);border-radius:14px;'
-            f'padding:20px 24px;">'
-            f'{rows_html}'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        else:
+            # ── Modo lectura: HTML estático ───────────────────────────────────
+            st.markdown(
+                titulo_pl + 'Estado de resultados · mensual</div>',
+                unsafe_allow_html=True,
+            )
+
+            ingresos  = _base_ingresos
+            fijos     = _base_fijos
+            variables = _base_variables
+            precio    = _base_precio
+
+            utilidad = ingresos - fijos - variables
+            margen_contrib = precio - costo_unit
+            pe  = (fijos / margen_contrib) if margen_contrib > 0 else 0.0
+            mrc = (capital / utilidad) if utilidad > 0 else None
+
+            rows_html = _pl_row(
+                "Ingresos estimados", _fmt_moneda(ingresos), _COLOR_NEUTRO,
+                help_text="Proyección mensual de ventas estimada por la IA para este giro y ubicación.",
+            )
+            rows_html += _pl_row(
+                "Costos fijos", _fmt_moneda(fijos), "var(--text-color)", indent=1,
+                help_text="Gastos fijos mensuales que se pagan independientemente de cuánto vendas: renta, nómina base, servicios.",
+            )
+            if df:
+                rows_html += _pl_desglose(df, _LABELS_FIJOS)
+            rows_html += _pl_row(
+                "Costos variables", _fmt_moneda(variables), "var(--text-color)", indent=1,
+                help_text="Gastos que crecen con el volumen de ventas: materia prima, insumos, comisiones.",
+            )
+            if dv:
+                rows_html += _pl_desglose(dv, _LABELS_VARIABLES)
+
+            color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
+            rows_html += _pl_row(
+                "Utilidad neta", _fmt_moneda(utilidad), color_utilidad,
+                is_total=True,
+                help_text="Lo que queda después de restar todos los costos a los ingresos. Si es negativa, el negocio pierde dinero ese mes.",
+            )
+
+            st.markdown(
+                f'<div style="background:var(--secondary-background-color);'
+                f'border:1px solid rgba(128,128,128,0.2);border-radius:14px;'
+                f'padding:20px 24px;">'
+                f'{rows_html}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     # ══════════════════════════════════════════════════════════════════════════
-    # BLOQUE 2 — Métricas de viabilidad
+    # BLOQUE 2 — Métricas de viabilidad (siempre recalculadas con valores activos)
     # ══════════════════════════════════════════════════════════════════════════
     with kpi_col:
         st.markdown(
@@ -566,7 +648,15 @@ def render_escenario(escenario: dict) -> None:
             unsafe_allow_html=True,
         )
 
+        margen_pct = ((precio - costo_unit) / precio * 100) if precio > 0 else 0.0
         mc_color = _COLOR_POSITIVO if margen_pct >= 40 else (_COLOR_ADVERTENCIA if margen_pct >= 20 else _COLOR_NEGATIVO)
+
+        if utilidad <= 0 or mrc is None:
+            semaforo, semaforo_color = "🔴", _COLOR_NEGATIVO
+        elif mrc > 24:
+            semaforo, semaforo_color = "🟡", _COLOR_ADVERTENCIA
+        else:
+            semaforo, semaforo_color = "🟢", _COLOR_POSITIVO
 
         st.markdown(
             _kpi_card(
@@ -636,87 +726,19 @@ def render_escenario(escenario: dict) -> None:
             f"recuperarías el capital en **{_fmt_meses(mrc)}**."
         )
 
-
-# ──────────────────────────────────────────────────────────────────────────────
-# 6. render_metricas — recálculo en tiempo real con ajustes del usuario
-# ──────────────────────────────────────────────────────────────────────────────
-
-def render_metricas(escenario: dict, ajustes: dict) -> None:
-    """
-    Muestra métricas financieras recalculadas con los overrides del usuario.
-    Toda la aritmética ocurre aquí — app.py solo pasa los valores de los controles.
-
-    Args:
-        escenario: dict base devuelto por parse_scenario().
-        ajustes: dict con claves opcionales que sobreescriben el escenario base:
-            - "ingresos_estimados_mes": float
-            - "costos_fijos_mes": float
-            - "costos_variables_mes": float
-            - "precio_unitario_promedio": float
-    """
-    # Aplicar overrides encima del escenario base
-    ingresos = float(ajustes.get("ingresos_estimados_mes",
-                                  escenario.get("ingresos_estimados_mes", 0.0)))
-    fijos = float(ajustes.get("costos_fijos_mes",
-                               escenario.get("costos_fijos_mes", 0.0)))
-    variables = float(ajustes.get("costos_variables_mes",
-                                   escenario.get("costos_variables_mes", 0.0)))
-    precio = float(ajustes.get("precio_unitario_promedio",
-                                escenario.get("precio_unitario_promedio", 0.0)))
-
-    costo_unit = escenario.get("costo_variable_unitario", 0.0)
-    capital = escenario.get("capital", 0.0)
-
-    # Recálculo
-    utilidad = ingresos - fijos - variables
-    margen_contrib = precio - costo_unit
-    pe_unidades = (fijos / margen_contrib) if margen_contrib > 0 else None
-    mrc = (capital / utilidad) if utilidad > 0 else None
-    margen_pct = (margen_contrib / precio * 100) if precio > 0 else 0.0
-
-    st.markdown(
-        '<div style="background:var(--secondary-background-color);border:1px solid rgba(128,128,128,0.2);border-radius:12px;'
-        'padding:20px 24px;margin-top:8px;">'
-        '<div style="font-weight:700;color:var(--text-color);font-size:0.95rem;margin-bottom:14px;">'
-        '🔄 Métricas recalculadas con tus ajustes</div>',
-        unsafe_allow_html=True,
-    )
-
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        base_utilidad = escenario.get("utilidad_neta_mes", 0.0)
-        delta_utilidad = utilidad - base_utilidad
-        st.metric(
-            "Utilidad neta / mes",
-            _fmt_moneda(utilidad),
-            delta=f"{'+' if delta_utilidad >= 0 else ''}{_fmt_moneda(delta_utilidad)}",
-        )
-    with c2:
-        st.metric(
-            "Punto de equilibrio",
-            f"{pe_unidades:.0f} u/mes" if pe_unidades is not None else "N/A",
-        )
-    with c3:
-        st.metric(
-            "Recuperación del capital",
-            _fmt_meses(mrc),
-        )
-    with c4:
-        st.metric(
-            "Margen de contribución",
-            f"{margen_pct:.1f}%",
-        )
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    if utilidad < 0:
-        st.error("⚠️ Con estos ajustes la utilidad es **negativa**.")
-    elif utilidad == 0:
-        st.warning("⚖️ Con estos ajustes el negocio **solo cubre costos** — sin utilidad.")
+    # ── Devolver valores activos para que app.py los pase a render_deuda ──────
+    return {
+        **escenario,
+        "ingresos_estimados_mes":  ingresos,
+        "costos_fijos_mes":        fijos,
+        "costos_variables_mes":    variables,
+        "precio_unitario_promedio": precio,
+        "utilidad_neta_mes":       utilidad,
+    }
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# 7. render_foda — cuatro columnas HTML/CSS con las listas del FODA
+# 6. render_foda — cuatro columnas HTML/CSS con las listas del FODA
 # ──────────────────────────────────────────────────────────────────────────────
 
 def render_foda(foda: dict) -> None:
