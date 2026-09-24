@@ -4,6 +4,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 from ai.prompt_builder import build_prompt
 
+_model: genai.GenerativeModel | None = None
+
 
 def get_locations(giro: str, capital: float, ciudad: str, zona_preferida: str = "") -> str:
     """
@@ -23,6 +25,8 @@ def get_locations(giro: str, capital: float, ciudad: str, zona_preferida: str = 
         EnvironmentError: Si no se encuentra la GEMINI_API_KEY en el entorno.
         RuntimeError: Si la llamada a la API falla por red, cuota u otro error.
     """
+    global _model
+
     # Busca el .env en la raíz del proyecto (un nivel arriba de ai/)
     load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
@@ -34,15 +38,13 @@ def get_locations(giro: str, capital: float, ciudad: str, zona_preferida: str = 
         )
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel(
-        "gemini-3.6-flash",
-        generation_config={"response_mime_type": "application/json"},
-    )
+    if _model is None:
+        _model = genai.GenerativeModel("gemini-3.6-flash")
 
     prompt = build_prompt(giro, capital, ciudad, zona_preferida)
 
     try:
-        response = model.generate_content(prompt)
+        response = _model.generate_content(prompt)
     except Exception as e:
         raise RuntimeError(
             f"Error al llamar a la API de Gemini: {e}. "
