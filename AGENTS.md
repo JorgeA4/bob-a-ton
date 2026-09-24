@@ -41,8 +41,7 @@ streamlit run app.py
 ├── .env.example
 └── fases_plans/                    # Planning docs only — NO code here
     ├── PLANNING_fase1.md
-    ├── PLANNING_fase2.md
-    └── dev-c-fase2-plan.md
+    └── PLANNING_fase2.md
 ```
 
 ## Hard contracts — do not break

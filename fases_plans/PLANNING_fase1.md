@@ -1,8 +1,9 @@
 # Fase 1 — Plan de Trabajo en Equipo
 
 ## Objetivo
-Construir una aplicación Streamlit donde el usuario ingresa **giro**, **capital inicial** y **ciudad**,
-y la IA (Gemini) devuelve una comparativa visual de ubicaciones recomendadas dentro de esa ciudad.
+Construir una aplicación Streamlit donde el usuario ingresa **giro**, **capital inicial**, **ciudad**
+y opcionalmente una **zona de interés**, y la IA (Gemini) devuelve una comparativa visual de
+ubicaciones recomendadas dentro de esa ciudad.
 
 ---
 
@@ -37,7 +38,8 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 **Archivos propios:** `app.py`, `ui/components.py`
 
 **Tareas:**
-- [x] Armar el formulario de entrada: campos `giro`, `capital` y `ciudad`
+- [x] Armar el formulario de entrada: campos `giro`, `capital`, `ciudad` y `zona_preferida` (opcional)
+- [x] Agregar selector de moneda MXN / USD junto al campo de capital; conversión USD→MXN en tiempo real via `api.frankfurter.app` (cachada 1 hora con `@st.cache_data`)
 - [x] Agregar validaciones de formulario (campos no vacíos, capital numérico positivo)
 - [x] Mostrar estado de carga mientras la IA procesa (`st.spinner`)
 - [x] Consumir la función `get_locations()` del módulo `ai/` y pasar el resultado a los componentes
@@ -47,8 +49,9 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 - [x] Eliminar el mock de `parse_response` en `app.py` — `core/parser.py` ya existe y puede importarse directamente
 
 **Contratos que debe respetar:**
-- Llamar a `ai.gemini_client.get_locations(giro, capital, ciudad) -> str`
+- Llamar a `ai.gemini_client.get_locations(giro, capital, ciudad, zona_preferida) -> str`
 - Parsear el resultado con `core.parser.parse_response(raw) -> List[dict]`
+- `st.session_state["capital"]` siempre en MXN — la conversión ocurre antes de guardar
 - Pasar `ubicaciones` (lista de dicts) directamente a los componentes
 
 ---
@@ -58,9 +61,9 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 
 **Tareas:**
 - [x] Configurar el cliente de Gemini con la API key desde `.env`
-- [x] Escribir `build_prompt(giro, capital, ciudad) -> str` en `prompt_builder.py`
+- [x] Escribir `build_prompt(giro, capital, ciudad, zona_preferida) -> str` en `prompt_builder.py`
 - [x] Asegurarse de que el prompt instruya a Gemini a responder **solo** con JSON válido
-- [x] Escribir `get_locations(giro, capital, ciudad) -> str` en `gemini_client.py`
+- [x] Escribir `get_locations(giro, capital, ciudad, zona_preferida) -> str` en `gemini_client.py`
   - Llama a `build_prompt()`
   - Envía el prompt a Gemini
   - Devuelve el string JSON crudo (sin parsear)
@@ -69,6 +72,7 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 **Contratos que debe respetar:**
 - `get_locations()` devuelve el JSON **como string**, el parseo lo hace Dev C
 - El modelo a usar: `gemini-3.6-flash`
+- `zona_preferida` es un string que puede ser vacío — el prompt lo incluye como zona opcional a evaluar junto con las demás
 
 ---
 
@@ -138,7 +142,10 @@ El código fuente vive en la **raíz del repositorio**. `fase1/` contiene única
 streamlit
 google-generativeai
 python-dotenv
+requests
 ```
+
+> `requests` se añadió para obtener el tipo de cambio USD→MXN en tiempo real desde `api.frankfurter.app`.
 
 ---
 
