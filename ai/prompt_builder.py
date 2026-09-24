@@ -47,7 +47,7 @@ Los 9 criterios (claves JSON exactas):
 - visibilidad_local: exposición del local hacia la calle o zonas de alto tráfico (10 = máxima visibilidad)
 - compatibilidad_capital: capital requerido para abrir en esa zona vs el capital disponible (10 = zona muy barata de arrancar, el capital sobra; 1 = zona requiere mucho más capital del disponible)
 
-Estructura exacta del JSON a devolver:
+Estructura exacta del JSON a devolver (caso normal):
 {{
   "ciudad": "{ciudad}",
   "giro": "{giro}",
@@ -73,6 +73,10 @@ Estructura exacta del JSON a devolver:
     }}
   ]
 }}
+
+Si el giro del negocio es ininterpretable, ilegible o no corresponde a ningún tipo de negocio real,
+NO inventes ubicaciones. Devuelve ÚNICAMENTE este JSON alternativo:
+{{"error": "giro_no_reconocido", "mensaje": "explicación breve en español de por qué no se pudo interpretar"}}
 
 Reglas de calidad:
 - Usa nombres REALES de colonias de {ciudad}, nunca genéricos como "zona norte".

@@ -92,7 +92,12 @@ def parse_response(json_str: str) -> List[dict]:
             f"Se esperaba un objeto JSON en la raíz, se recibió: {type(data).__name__}"
         )
 
-    # 2. Validar claves raíz
+    # 2. Detectar señal de giro no reconocido antes de validar el schema normal
+    if "error" in data:
+        mensaje = data.get("mensaje", "el giro ingresado no corresponde a ningún tipo de negocio reconocible")
+        raise ValueError(f"La IA no pudo interpretar el giro del negocio: {mensaje}")
+
+    # 3. Validar claves raíz
     _validar_claves(data, _CLAVES_RAIZ, "la raíz del JSON")
 
     ubicaciones_raw = data["ubicaciones"]

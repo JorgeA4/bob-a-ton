@@ -211,7 +211,7 @@ with form_col:
         zona_preferida = st.text_input(
             "Zona de interés (opcional)",
             placeholder="Ej. Zona Río, Centro Histórico",
-            help="Si ya tienes una zona en mente, la IA la evaluará junto con las demás.",
+            help="La IA evaluará esta zona junto con las demás. Usa un nombre reconocible. Zonas ambiguas o desconocidas pueden producir resultados imprecisos.",
         )
         submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
 
