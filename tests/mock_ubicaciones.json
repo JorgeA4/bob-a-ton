@@ -1,0 +1,79 @@
+{
+  "ciudad": "Tijuana",
+  "giro": "Cafetería",
+  "capital": 150000,
+  "ubicaciones": [
+    {
+      "id": 1,
+      "nombre": "Zona Río",
+      "descripcion_breve": "Centro financiero y comercial moderno, alta densidad de oficinas y centros comerciales.",
+      "puntaje_total": 74,
+      "recomendacion_ia": "Zona Río es la mejor opción para una cafetería orientada a profesionistas y ejecutivos. El flujo peatonal en horas de oficina es muy alto y la clientela tiene ticket promedio elevado. Se recomienda abrir en planta baja de algún edificio corporativo o en Plaza Río.",
+      "criterios": {
+        "costo_renta":               { "nivel": "bajo",     "puntaje": 4, "nota": "Rentas elevadas para locales comerciales en avenidas principales." },
+        "flujo_peatonal":            { "nivel": "muy alto", "puntaje": 9, "nota": "Alta concentración de oficinas y centros comerciales genera tráfico constante." },
+        "accesibilidad_transporte":  { "nivel": "alto",     "puntaje": 8, "nota": "Bien conectada por rutas de camión y taxis; cerca de vías rápidas." },
+        "nivel_competencia":         { "nivel": "alto",     "puntaje": 5, "nota": "Presencia de Starbucks, OXXO Café y varias cafeterías independientes." },
+        "afinidad_con_giro":         { "nivel": "muy alto", "puntaje": 9, "nota": "Perfil socioeconómico medio-alto, hábito de consumo de café frecuente." },
+        "seguridad_zona":            { "nivel": "alto",     "puntaje": 8, "nota": "Una de las zonas más seguras de Tijuana, presencia policial constante." },
+        "potencial_crecimiento":     { "nivel": "alto",     "puntaje": 8, "nota": "Desarrollo continuo de nuevos edificios corporativos y plazas." },
+        "visibilidad_local":         { "nivel": "alto",     "puntaje": 8, "nota": "Locales con gran visibilidad en avenidas de alto tráfico vehicular." },
+        "compatibilidad_capital":    { "nivel": "medio",    "puntaje": 5, "nota": "El capital de $150,000 cubre apertura básica, pero el depósito de renta puede ser alto." }
+      }
+    },
+    {
+      "id": 2,
+      "nombre": "Centro Histórico",
+      "descripcion_breve": "Corazón tradicional de la ciudad, mezcla de turismo, comercio popular y cultura local.",
+      "puntaje_total": 63,
+      "recomendacion_ia": "El Centro es ideal si el concepto apunta al turismo y a un ticket más accesible. El flujo es muy alto en fines de semana pero la competencia informal es intensa. La seguridad es el factor a evaluar con más cuidado antes de comprometerse.",
+      "criterios": {
+        "costo_renta":               { "nivel": "medio",    "puntaje": 6, "nota": "Rentas moderadas; gran variación según la calle exacta." },
+        "flujo_peatonal":            { "nivel": "muy alto", "puntaje": 9, "nota": "Zona turística y comercial con miles de visitantes diarios, especialmente fines de semana." },
+        "accesibilidad_transporte":  { "nivel": "muy alto", "puntaje": 9, "nota": "Todas las rutas convergen en el centro; excelente accesibilidad." },
+        "nivel_competencia":         { "nivel": "alto",     "puntaje": 4, "nota": "Saturado de fondas, puestos de café y negocios informales." },
+        "afinidad_con_giro":         { "nivel": "medio",    "puntaje": 6, "nota": "Perfil mixto: turistas, trabajadores y residentes de bajos ingresos." },
+        "seguridad_zona":            { "nivel": "medio",    "puntaje": 5, "nota": "Zonas con alta actividad, pero algunas calles presentan riesgo nocturno." },
+        "potencial_crecimiento":     { "nivel": "medio",    "puntaje": 6, "nota": "Proyectos de revitalización en marcha, pero aún lentos." },
+        "visibilidad_local":         { "nivel": "muy alto", "puntaje": 9, "nota": "Locales con frente a avenida principal, visibilidad excelente." },
+        "compatibilidad_capital":    { "nivel": "alto",     "puntaje": 9, "nota": "$150,000 es suficiente para montar un local bien equipado en esta zona." }
+      }
+    },
+    {
+      "id": 3,
+      "nombre": "Playas de Tijuana",
+      "descripcion_breve": "Zona costera residencial con creciente oferta gastronómica y turismo local de fin de semana.",
+      "puntaje_total": 61,
+      "recomendacion_ia": "Playas tiene un nicho interesante para una cafetería con identidad propia y ambiente relajado. El flujo es estacional — fuerte en verano y fines de semana, bajo entre semana en temporada baja. Funciona mejor como proyecto a mediano plazo con buen branding.",
+      "criterios": {
+        "costo_renta":               { "nivel": "medio",    "puntaje": 7, "nota": "Rentas accesibles comparadas con Zona Río; locales pequeños disponibles." },
+        "flujo_peatonal":            { "nivel": "medio",    "puntaje": 6, "nota": "Tráfico concentrado en fines de semana y verano; bajo entre semana." },
+        "accesibilidad_transporte":  { "nivel": "medio",    "puntaje": 6, "nota": "Acceso principalmente en auto; transporte público limitado." },
+        "nivel_competencia":         { "nivel": "medio",    "puntaje": 6, "nota": "Competencia moderada, principalmente restaurantes y algunos cafés boutique." },
+        "afinidad_con_giro":         { "nivel": "alto",     "puntaje": 7, "nota": "Residentes con buen poder adquisitivo que valoran la experiencia de café." },
+        "seguridad_zona":            { "nivel": "muy alto", "puntaje": 9, "nota": "Una de las zonas más tranquilas y seguras de Tijuana." },
+        "potencial_crecimiento":     { "nivel": "alto",     "puntaje": 7, "nota": "Creciente desarrollo inmobiliario y gastronómico en la zona." },
+        "visibilidad_local":         { "nivel": "medio",    "puntaje": 6, "nota": "Visibilidad media; requiere señalización y presencia en redes sociales." },
+        "compatibilidad_capital":    { "nivel": "alto",     "puntaje": 7, "nota": "Capital suficiente para arrancar; costos de apertura moderados." }
+      }
+    },
+    {
+      "id": 4,
+      "nombre": "La Mesa",
+      "descripcion_breve": "Zona residencial consolidada del este de Tijuana con alto tráfico vehicular y servicios de barrio.",
+      "puntaje_total": 58,
+      "recomendacion_ia": "La Mesa ofrece una base de clientes residencial fiel con menos competencia directa que Zona Río. Es buena opción para un concepto de cafetería de barrio con horario matutino y vespertino. La visibilidad depende mucho de la ubicación exacta del local.",
+      "criterios": {
+        "costo_renta":               { "nivel": "alto",     "puntaje": 8, "nota": "Rentas significativamente más bajas; buen valor para el tamaño de local." },
+        "flujo_peatonal":            { "nivel": "medio",    "puntaje": 6, "nota": "Tráfico moderado, principalmente vehicular; peatones en zonas comerciales específicas." },
+        "accesibilidad_transporte":  { "nivel": "medio",    "puntaje": 6, "nota": "Varias rutas de camión disponibles; zona bien conectada por Boulevard Díaz Ordaz." },
+        "nivel_competencia":         { "nivel": "medio",    "puntaje": 7, "nota": "Menos cafeterías de especialidad; competencia principalmente con OXXO y tiendas de conveniencia." },
+        "afinidad_con_giro":         { "nivel": "medio",    "puntaje": 6, "nota": "Clase media trabajadora; hábito de café existe pero ticket promedio más bajo." },
+        "seguridad_zona":            { "nivel": "alto",     "puntaje": 7, "nota": "Zona residencial relativamente tranquila; algunos puntos de riesgo en la periferia." },
+        "potencial_crecimiento":     { "nivel": "medio",    "puntaje": 5, "nota": "Crecimiento lento pero estable; poca especulación inmobiliaria." },
+        "visibilidad_local":         { "nivel": "medio",    "puntaje": 6, "nota": "Visibilidad variable; los mejores locales están sobre el bulevar principal." },
+        "compatibilidad_capital":    { "nivel": "muy alto", "puntaje": 9, "nota": "$150,000 es más que suficiente para montar un local completo en esta zona." }
+      }
+    }
+  ]
+}

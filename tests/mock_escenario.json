@@ -1,0 +1,40 @@
+{
+  "giro": "Cafetería",
+  "ciudad": "Tijuana",
+  "ubicacion": "Zona Río",
+  "capital": 150000.0,
+  "ingresos_estimados_mes": 78000.0,
+  "costos_fijos_mes": 28000.0,
+  "costos_variables_mes": 22000.0,
+  "utilidad_neta_mes": 28000.0,
+  "punto_equilibrio_unidades": 467.0,
+  "meses_recuperacion_capital": 5.4,
+  "precio_unitario_promedio": 60.0,
+  "costo_variable_unitario": 22.0,
+  "foda": {
+    "fortalezas": [
+      "Alta demanda de café en zona de oficinas y centros comerciales",
+      "Ticket promedio elevado por perfil socioeconómico de la zona",
+      "Horario extendido viable (7am–9pm) sin caída fuerte de tráfico",
+      "Posibilidad de ofrecer servicio a empresas cercanas (catering de oficina)"
+    ],
+    "oportunidades": [
+      "Crecimiento continuo de nuevos edificios corporativos en Zona Río",
+      "Tendencia al alza del consumo de café de especialidad en Tijuana",
+      "Posibilidad de alianzas con coworkings y espacios de trabajo flexible",
+      "Turismo de negocios como segmento adicional de clientes"
+    ],
+    "debilidades": [
+      "Renta elevada que presiona el margen de utilidad",
+      "Capital inicial justo para el nivel de acabados que exige la zona",
+      "Alta competencia de cadenas con mayor presupuesto de marketing",
+      "Dependencia del flujo laboral: caída fuerte en vacaciones y fines de semana"
+    ],
+    "amenazas": [
+      "Entrada de nuevas cadenas de café (ej. expansión de franquicias nacionales)",
+      "Incremento de rentas por revalorización continua de la zona",
+      "Cambios en modalidad de trabajo (home office) que reduzcan tráfico de oficinas",
+      "Volatilidad del tipo de cambio que afecta costos de insumos importados"
+    ]
+  }
+}

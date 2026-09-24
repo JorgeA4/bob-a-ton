@@ -2,6 +2,9 @@ import streamlit as st
 
 from ai.gemini_client import get_locations
 from core.parser import parse_response
+# ── TEST: quitar estas dos líneas cuando ya no se necesiten ──────────────────
+from tests.mock_client import get_mock_locations, get_mock_scenario
+# ─────────────────────────────────────────────────────────────────────────────
 from ui.components import (
     render_tabla,
     render_grafico,
@@ -142,15 +145,53 @@ st.markdown(
 # ──────────────────────────────────────────────────────────────────────────────
 # Formulario de entrada (Fase 1)
 # ──────────────────────────────────────────────────────────────────────────────
-with st.form("form_negocio"):
-    col1, col2, col3 = st.columns(3)
-    with col1:
+form_col, img_col = st.columns([1, 1], gap="large")
+
+with form_col:
+    with st.form("form_negocio"):
         giro = st.text_input("Giro del negocio", placeholder="Ej. Cafetería, Taller mecánico")
-    with col2:
         capital = st.number_input("Capital inicial (MXN)", min_value=1, step=5000, value=100000)
-    with col3:
         ciudad = st.text_input("Ciudad", placeholder="Ej. Guadalajara, CDMX")
-    submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
+        submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
+
+with img_col:
+    st.markdown(
+        """
+        <div style="
+            height:220px;
+            background:linear-gradient(135deg,#dbeafe 0%,#ede9fe 100%);
+            border:2px dashed #93c5fd;
+            border-radius:16px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:10px;
+            color:#3b82f6;
+        ">
+            <span style="font-size:3rem;">🗺️</span>
+            <span style="font-weight:600;font-size:0.95rem;">Imagen orientativa</span>
+            <span style="font-size:0.8rem;color:#94a3b8;">placeholder</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+# ── TEST — Botón de datos de ejemplo (quitar bloque completo cuando no se use)
+st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
+if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
+    from core.parser import parse_response as _pr
+    _raw = get_mock_locations()
+    _ubs = _pr(_raw)
+    st.session_state["ubicaciones"] = _ubs
+    st.session_state["giro"] = "Cafetería"
+    st.session_state["capital"] = 150000
+    st.session_state["ciudad"] = "Tijuana"
+    for key in ("escenario", "ubicacion_elegida", "mostrar_ajustes",
+                "mostrar_foda", "mostrar_deuda"):
+        st.session_state.pop(key, None)
+    st.rerun()
+# ── FIN TEST ──────────────────────────────────────────────────────────────────
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Procesamiento de Fase 1 — guarda resultados en session_state para que
@@ -205,12 +246,17 @@ if "ubicaciones" in st.session_state:
 
     st.success(f"Análisis completado para **{_ciudad}** — {len(_ubs)} ubicaciones evaluadas.")
 
-    st.markdown("<hr>", unsafe_allow_html=True)
-    render_tabla(_ubs)
-    st.markdown("<hr>", unsafe_allow_html=True)
-    render_grafico(_ubs)
+    # ── 1. Recomendaciones de la IA (ancho completo) ───────────────────────────
     st.markdown("<hr>", unsafe_allow_html=True)
     render_recomendacion(_ubs)
+
+    # ── 2. Gráfico (izquierda) + Tabla (derecha) ───────────────────────────────
+    st.markdown("<hr>", unsafe_allow_html=True)
+    graf_col, tabla_col = st.columns([1, 1], gap="large")
+    with graf_col:
+        render_grafico(_ubs)
+    with tabla_col:
+        render_tabla(_ubs)
 
     # ──────────────────────────────────────────────────────────────────────────
     # FASE 2 — Selector de ubicación
@@ -269,7 +315,10 @@ if "ubicaciones" in st.session_state:
 
         with st.spinner(f"Generando escenario financiero para {seleccion}…"):
             try:
-                raw_escenario = get_scenario(_giro, float(_capital), _ciudad, seleccion)
+                # ── TEST: reemplazar get_mock_scenario por get_scenario cuando corresponda
+                raw_escenario = get_mock_scenario(seleccion)
+                # raw_escenario = get_scenario(_giro, float(_capital), _ciudad, seleccion)
+                # ── FIN TEST
                 escenario_parsed = parse_scenario(raw_escenario)
             except EnvironmentError as e:
                 st.error(f"⚠️ Configuración faltante: {e}")

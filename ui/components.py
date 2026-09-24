@@ -332,6 +332,7 @@ def render_recomendacion(ubicaciones: list) -> None:
     st.markdown(cards_html, unsafe_allow_html=True)
 
 
+
 # ══════════════════════════════════════════════════════════════════════════════
 # FASE 2 — Escenario financiero, métricas, FODA y deuda
 # ══════════════════════════════════════════════════════════════════════════════

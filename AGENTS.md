@@ -32,6 +32,10 @@ streamlit run app.py
 │   ├── models.py                   # Criterio, Ubicacion, RespuestaIA dataclasses (Dev C)
 │   ├── parser.py                   # parse_response(str) → List[dict] (Dev C) — do not modify
 │   └── scenario_parser.py          # parse_scenario(str) → dict (Dev C) — to be created
+├── tests/                          # Mock data and test helpers — do not use in production
+│   ├── mock_client.py              # get_mock_locations() / get_mock_scenario() — drop-in replacements for AI calls
+│   ├── mock_ubicaciones.json       # 4 example zones for Tijuana (Phase 1 response shape)
+│   └── mock_escenario.json         # Example financial scenario for Zona Río (Phase 2 response shape)
 ├── requirements.txt
 ├── .env.example
 └── fases_plans/                    # Planning docs only — NO code here
@@ -71,3 +75,11 @@ streamlit run app.py
 - `@dataclass` models in `core/models.py`; parsers always return plain `dict`/`List[dict]`, never dataclasses.
 - Parsers raise `ValueError` with descriptive messages on missing keys; never silently return `None`.
 - `st.session_state` is the only state bridge between Phases 1 and 2.
+
+## Test / mock mode
+
+- `tests/mock_client.py` provides `get_mock_locations()` and `get_mock_scenario(ubicacion)` as drop-in replacements for the real AI calls.
+- Mock data lives in `tests/mock_ubicaciones.json` (Phase 1 shape) and `tests/mock_escenario.json` (Phase 2 shape).
+- The test button and its imports are delimited by `# ── TEST` / `# ── FIN TEST` comments in `app.py` — remove those blocks and swap back `get_scenario(...)` to disable mock mode.
+- `tests/` files must never be imported outside of the clearly marked test blocks in `app.py`.
+- Do not modify the JSON schemas in `tests/` — they must always match the shapes validated by `core/parser.py` and `core/scenario_parser.py`.
