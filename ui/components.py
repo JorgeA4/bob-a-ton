@@ -25,10 +25,10 @@ NIVEL_META = {
     "bajo":     {"emoji": "🔴", "color": "#dc2626", "bg": "#fee2e2", "label": "Bajo"},
 }
 
-# Paleta corporativa para las 4 ubicaciones (coincide en tabla y gráfico)
-LOCATION_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
+# Paleta corporativa para las 5 ubicaciones (coincide en tabla y gráfico)
+LOCATION_COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ef4444"]
 
-MEDALLAS = ["🥇", "🥈", "🥉", "4️⃣"]
+MEDALLAS = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"]
 
 
 # ──────────────────────────────────────────────────────────────────────────────

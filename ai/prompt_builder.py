@@ -1,8 +1,25 @@
-def build_prompt(giro: str, capital: float, ciudad: str) -> str:
+def build_prompt(giro: str, capital: float, ciudad: str, zona_preferida: str = "") -> str:
     """
     Construye el prompt estructurado que se enviará a Gemini.
     Devuelve un string listo para ser usado como mensaje.
+
+    Args:
+        giro: Tipo o rubro del negocio.
+        capital: Capital inicial en MXN.
+        ciudad: Ciudad donde se abrirá el negocio.
+        zona_preferida: Zona o colonia específica que el usuario quiere evaluar (opcional).
+                        Si se proporciona, se incluye como primera ubicación obligatoria.
     """
+    if zona_preferida.strip():
+        instruccion_zona = (
+            f"- Zona de interés del usuario: {zona_preferida}\n\n"
+            f"IMPORTANTE: La primera ubicación del array (id: 1) DEBE ser \"{zona_preferida}\". "
+            f"Evalúala con los mismos 9 criterios con la misma rigurosidad que las demás. "
+            f"Las otras 4 ubicaciones las eliges tú según tu criterio experto."
+        )
+    else:
+        instruccion_zona = ""
+
     return f"""Eres un consultor experto en apertura de negocios y análisis de mercado local.
 Tu tarea es analizar la viabilidad de ubicaciones dentro de una ciudad para un negocio específico,
 y devolver una comparativa estructurada en formato JSON.
@@ -11,9 +28,9 @@ Datos del negocio:
 - Giro: {giro}
 - Capital inicial: {capital} MXN
 - Ciudad: {ciudad}
-
+{instruccion_zona}
 Instrucciones:
-1. Identifica 4 zonas o colonias REALES y representativas dentro de {ciudad} para este tipo de negocio.
+1. Identifica 5 zonas o colonias REALES y representativas dentro de {ciudad} para este tipo de negocio.
 2. Evalúa cada zona con los 9 criterios definidos (puntaje 1–10, donde 10 es la mejor condición).
 3. Calcula el puntaje_total como la suma exacta de los 9 puntajes individuales.
 4. Incluye una recomendacion_ia breve y accionable por ubicación.

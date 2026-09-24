@@ -74,6 +74,24 @@
         "visibilidad_local":         { "nivel": "medio",    "puntaje": 6, "nota": "Visibilidad variable; los mejores locales están sobre el bulevar principal." },
         "compatibilidad_capital":    { "nivel": "muy alto", "puntaje": 9, "nota": "$150,000 es más que suficiente para montar un local completo en esta zona." }
       }
+    },
+    {
+      "id": 5,
+      "nombre": "Otay",
+      "descripcion_breve": "Zona industrial y comercial en expansión cerca del cruce fronterizo, con creciente población trabajadora y nuevas plazas comerciales.",
+      "puntaje_total": 55,
+      "recomendacion_ia": "Otay es una apuesta a futuro: la zona crece rápido gracias a la maquila y al desarrollo habitacional, pero aún le falta consolidarse como destino de consumo. Ideal para quien pueda sostener los primeros meses con flujo bajo y apueste a capturar la zona antes que la competencia llegue.",
+      "criterios": {
+        "costo_renta":               { "nivel": "alto",     "puntaje": 8, "nota": "Rentas muy accesibles; oferta amplia de locales en plazas nuevas." },
+        "flujo_peatonal":            { "nivel": "bajo",     "puntaje": 4, "nota": "Tráfico principalmente vehicular; peatones concentrados en horas de entrada y salida de maquilas." },
+        "accesibilidad_transporte":  { "nivel": "medio",    "puntaje": 5, "nota": "Rutas limitadas; la mayoría de los trabajadores llegan en transporte de empresa o auto propio." },
+        "nivel_competencia":         { "nivel": "bajo",     "puntaje": 8, "nota": "Muy poca competencia en cafeterías de especialidad; mercado prácticamente virgen." },
+        "afinidad_con_giro":         { "nivel": "medio",    "puntaje": 5, "nota": "Trabajadores de maquila con ticket promedio bajo; ejecutivos y supervisores como nicho de mayor gasto." },
+        "seguridad_zona":            { "nivel": "medio",    "puntaje": 6, "nota": "Zona industrial con seguridad aceptable en áreas comerciales; vigilancia privada en parques industriales." },
+        "potencial_crecimiento":     { "nivel": "muy alto", "puntaje": 9, "nota": "Una de las zonas de mayor crecimiento urbano e industrial de Tijuana en los últimos años." },
+        "visibilidad_local":         { "nivel": "medio",    "puntaje": 5, "nota": "Visibilidad moderada; los locales sobre el bulevar principal tienen mejor exposición." },
+        "compatibilidad_capital":    { "nivel": "muy alto", "puntaje": 5, "nota": "$150,000 cubre holgadamente la apertura; los costos fijos son de los más bajos de la ciudad." }
+      }
     }
   ]
 }

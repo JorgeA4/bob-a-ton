@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from ai.prompt_builder import build_prompt
 
 
-def get_locations(giro: str, capital: float, ciudad: str) -> str:
+def get_locations(giro: str, capital: float, ciudad: str, zona_preferida: str = "") -> str:
     """
     Llama a la API de Gemini y devuelve el JSON crudo como string.
     No parsea la respuesta — eso es responsabilidad de core.parser.
@@ -14,6 +14,7 @@ def get_locations(giro: str, capital: float, ciudad: str) -> str:
         giro: Tipo o rubro del negocio (ej. "Cafetería")
         capital: Capital inicial en MXN (ej. 120000)
         ciudad: Ciudad donde se abrirá el negocio (ej. "Guadalajara")
+        zona_preferida: Zona o colonia específica que el usuario quiere evaluar (opcional).
 
     Returns:
         String con el JSON crudo devuelto por Gemini.
@@ -33,9 +34,12 @@ def get_locations(giro: str, capital: float, ciudad: str) -> str:
         )
 
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    model = genai.GenerativeModel(
+        "gemini-3.6-flash",
+        generation_config={"response_mime_type": "application/json"},
+    )
 
-    prompt = build_prompt(giro, capital, ciudad)
+    prompt = build_prompt(giro, capital, ciudad, zona_preferida)
 
     try:
         response = model.generate_content(prompt)
@@ -45,4 +49,18 @@ def get_locations(giro: str, capital: float, ciudad: str) -> str:
             "Verifica tu conexión a internet o el estado de tu cuota."
         ) from e
 
-    return response.text
+    return _clean_json(response.text)
+
+
+def _clean_json(text: str) -> str:
+    """
+    Extrae el JSON de la respuesta aunque Gemini lo envuelva en markdown.
+    Estrategia: localizar el primer '{' y el último '}' del texto y devolver
+    solo ese fragmento — funciona tanto para JSON limpio como para respuestas
+    envueltas en bloques ```json ... ```.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+    return text.strip()

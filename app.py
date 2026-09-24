@@ -152,6 +152,11 @@ with form_col:
         giro = st.text_input("Giro del negocio", placeholder="Ej. Cafetería, Taller mecánico")
         capital = st.number_input("Capital inicial (MXN)", min_value=1, step=5000, value=100000)
         ciudad = st.text_input("Ciudad", placeholder="Ej. Guadalajara, CDMX")
+        zona_preferida = st.text_input(
+            "Zona de interés (opcional)",
+            placeholder="Ej. Zona Río, Centro Histórico",
+            help="Si ya tienes una zona en mente, la IA la evaluará junto con las demás.",
+        )
         submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
 
 with img_col:
@@ -187,6 +192,7 @@ if st.button("🧪 Cargar datos de ejemplo (test)", type="secondary"):
     st.session_state["giro"] = "Cafetería"
     st.session_state["capital"] = 150000
     st.session_state["ciudad"] = "Tijuana"
+    st.session_state["zona_preferida"] = ""
     for key in ("escenario", "ubicacion_elegida", "mostrar_ajustes",
                 "mostrar_foda", "mostrar_deuda"):
         st.session_state.pop(key, None)
@@ -212,7 +218,7 @@ if submitted:
     else:
         with st.spinner("Consultando a la IA… esto puede tardar unos segundos."):
             try:
-                raw_json = get_locations(giro.strip(), capital, ciudad.strip())
+                raw_json = get_locations(giro.strip(), capital, ciudad.strip(), zona_preferida.strip())
                 ubicaciones = parse_response(raw_json)
             except EnvironmentError as e:
                 st.error(f"⚠️ Configuración faltante: {e}")

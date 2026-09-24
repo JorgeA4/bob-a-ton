@@ -112,7 +112,10 @@ def get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
     """
     _ensure_configured()
 
-    model = genai.GenerativeModel("gemini-3.6-flash")
+    model = genai.GenerativeModel(
+        "gemini-3.6-flash",
+        generation_config={"response_mime_type": "application/json"},
+    )
     prompt = _build_scenario_prompt(giro, capital, ciudad, ubicacion)
 
     try:
@@ -123,4 +126,18 @@ def get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
             "Verifica tu conexión a internet o el estado de tu cuota."
         ) from e
 
-    return response.text
+    return _clean_json(response.text)
+
+
+def _clean_json(text: str) -> str:
+    """
+    Extrae el JSON de la respuesta aunque Gemini lo envuelva en markdown.
+    Estrategia: localizar el primer '{' y el último '}' del texto y devolver
+    solo ese fragmento — funciona tanto para JSON limpio como para respuestas
+    envueltas en bloques ```json ... ```.
+    """
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        return text[start : end + 1]
+    return text.strip()
