@@ -151,7 +151,7 @@ Notes:
 - `ui.components.render_vulnerabilidades(alertas_numericas, analisis_ia)` renders: header + veredicto badge → numeric alert cards (if any) → quantifiable risk cards → contextual risk cards. If both numeric and quantifiable lists are empty, shows a positive confirmation message.
 - The vulnerability math (capital quemado, break-even via exponential curve) is duplicated inside `vulnerability_analyzer.py` — do **not** import `ui/components.py` from `core/`.
 
-## Phase 3 JSON schema (returned by `get_vulnerability_analysis()`, validated by `parse_vulnerability()`)
+## Phase 3+4 JSON schema (returned by `get_vulnerability_analysis()`, validated by `parse_vulnerability()`)
 
 ```json
 {
@@ -173,9 +173,20 @@ Notes:
       "mitigacion": "str"
     }
   ],
-  "veredicto": "viable | viable_con_reservas | riesgo_alto | no_viable"
+  "veredicto": "viable | viable_con_reservas | riesgo_alto | no_viable",
+  "plan_accion": [
+    {
+      "prioridad": "inmediata | antes_de_abrir | corto_plazo",
+      "area": "financiero | operativo | marketing | legal | rrhh",
+      "accion": "str — verbo en infinitivo, específico y accionable",
+      "impacto": "str — qué riesgo mitiga o qué oportunidad activa",
+      "plazo_dias": "int — días desde hoy para completar la acción"
+    }
+  ]
 }
 ```
+
+`plan_accion` tiene mínimo 1 item y máximo 7, ordenados de mayor a menor urgencia. `prioridad`: `"inmediata"` = antes de abrir o primera semana; `"antes_de_abrir"` = semanas previas de preparación; `"corto_plazo"` = primeros 3 meses de operación.
 
 ## AI provider
 

@@ -9,7 +9,7 @@
     },
     {
       "titulo": "Impacto de incremento de renta sobre viabilidad",
-      "descripcion": "La renta representa el 17.9% de los ingresos estimados ($14,000 / $78,000 MXN). Un incremento del 15% ($2,100 MXN/mes adicionales) reduciría la utilidad neta de $28,000 a $25,900 MXN, y un incremento del 50% haría el negocio marginalmente rentable con solo $14,000 MXN de utilidad.",
+      "descripcion": "La renta representa el 17.9% de los ingresos estimados ($14,000 / $78,000 MXN). Un incremento del 15% ($2,100 MXN/mes adicionales) reduciría la utilidad neta de $28,000 a $25,900 MXN.",
       "severidad": "media",
       "mitigacion": "Negociar contrato de arrendamiento a plazo fijo de 2-3 años con cláusula de incremento máximo del 10% anual."
     }
@@ -17,32 +17,76 @@
   "riesgos_contextuales": [
     {
       "titulo": "Dependencia crítica del flujo laboral de la zona",
-      "descripcion": "Zona Río concentra su demanda en días hábiles y horario de oficina. La caída de tráfico en vacaciones y fines de semana puede reducir ingresos hasta un 30-40% en períodos como Semana Santa o verano, comprometiendo el pago de costos fijos.",
+      "descripcion": "Zona Río concentra su demanda en días hábiles y horario de oficina. La caída de tráfico en vacaciones y fines de semana puede reducir ingresos hasta un 30-40% en períodos críticos.",
       "severidad": "alta",
       "fuente": "foda",
-      "mitigacion": "Desarrollar desde el mes 1 un segmento de catering para empresas cercanas que genere ingresos recurrentes independientes del flujo peatonal. Activar convenios con al menos 3 empresas en el primer trimestre."
+      "mitigacion": "Desarrollar desde el mes 1 un segmento de catering para empresas cercanas. Activar convenios con al menos 3 empresas en el primer trimestre."
     },
     {
       "titulo": "Presión competitiva de cadenas con mayor presupuesto",
-      "descripcion": "La apertura de franquicias nacionales en Zona Río representa un riesgo de erosión de clientela para un negocio independiente que no puede competir en alcance publicitario ni en programas de lealtad digitales.",
+      "descripcion": "La apertura de franquicias nacionales en Zona Río representa un riesgo de erosión de clientela para un negocio independiente.",
       "severidad": "media",
       "fuente": "zona",
-      "mitigacion": "Construir identidad local diferenciada: nombre del barista, origen de los granos, historia del negocio. Implementar programa de lealtad desde el día de apertura."
+      "mitigacion": "Construir identidad local diferenciada e implementar programa de lealtad desde el día de apertura."
     },
     {
       "titulo": "Volatilidad del tipo de cambio en insumos importados",
-      "descripcion": "Los granos de café de especialidad se cotizan parcialmente en USD. Una depreciación del peso del 15% incrementaría el costo de insumos en ~$2,100 MXN/mes, comprimiendo la utilidad de $28,000 a $25,900 MXN.",
+      "descripcion": "Los granos de café se cotizan parcialmente en USD. Una depreciación del peso del 15% incrementaría costos en ~$2,100 MXN/mes.",
       "severidad": "media",
       "fuente": "foda",
-      "mitigacion": "Mantener inventario de granos para 45-60 días como buffer ante alzas cambiarias. Evaluar proveedores nacionales de café de altura (Chiapas, Veracruz, Oaxaca)."
+      "mitigacion": "Mantener inventario de granos para 45-60 días y evaluar proveedores nacionales de café de altura."
     },
     {
       "titulo": "Riesgo de adopción del trabajo remoto",
-      "descripcion": "Una transición parcial al home office en empresas de Zona Río reduciría estructuralmente el flujo peatonal en horario de oficina, que es el segmento principal del negocio.",
+      "descripcion": "Una transición al home office en empresas de Zona Río reduciría estructuralmente el flujo peatonal en horario de oficina.",
       "severidad": "baja",
       "fuente": "zona",
-      "mitigacion": "Posicionar el local como espacio de trabajo flexible con wifi de alta velocidad para atraer al trabajador remoto que busca salir de casa."
+      "mitigacion": "Posicionar el local como espacio de trabajo flexible con wifi de alta velocidad."
     }
   ],
-  "veredicto": "viable_con_reservas"
+  "veredicto": "viable_con_reservas",
+  "plan_accion": [
+    {
+      "prioridad": "inmediata",
+      "area": "legal",
+      "accion": "Negociar y firmar contrato de arrendamiento con cláusula de incremento máximo del 10% anual y plazo fijo de 2 años",
+      "impacto": "Elimina el riesgo de incrementos de renta que podrían reducir la utilidad neta a la mitad en el primer año",
+      "plazo_dias": 14
+    },
+    {
+      "prioridad": "inmediata",
+      "area": "financiero",
+      "accion": "Diseñar el menú con al menos 3 productos de ticket alto ($80-120 MXN) con margen de contribución superior al 70%",
+      "impacto": "Reduce la dependencia del volumen y eleva el ticket promedio por encima del punto de equilibrio con menos clientes",
+      "plazo_dias": 7
+    },
+    {
+      "prioridad": "antes_de_abrir",
+      "area": "operativo",
+      "accion": "Establecer contrato de abastecimiento con proveedor local de café de altura (Chiapas o Veracruz) para el 60% del volumen mensual",
+      "impacto": "Reduce la exposición cambiaria en insumos y asegura precio fijo durante los primeros 6 meses de operación",
+      "plazo_dias": 30
+    },
+    {
+      "prioridad": "antes_de_abrir",
+      "area": "marketing",
+      "accion": "Crear perfil en Instagram y Google Maps con contenido de origen de café y propuesta de espacio de trabajo antes de la apertura",
+      "impacto": "Construye audiencia antes de abrir y diferencia el negocio de cadenas desde el primer día visible",
+      "plazo_dias": 21
+    },
+    {
+      "prioridad": "corto_plazo",
+      "area": "operativo",
+      "accion": "Prospectar y cerrar convenios de catering de café con al menos 3 empresas en un radio de 500 metros en el primer mes",
+      "impacto": "Genera ingresos recurrentes independientes del flujo peatonal y reduce la vulnerabilidad ante vacaciones y fines de semana",
+      "plazo_dias": 45
+    },
+    {
+      "prioridad": "corto_plazo",
+      "area": "marketing",
+      "accion": "Implementar programa de lealtad con tarjeta de sellos físicos desde la semana 1: la décima bebida es gratis",
+      "impacto": "Combate la ventaja de programas digitales de cadenas y construye base de clientes recurrentes desde el primer mes",
+      "plazo_dias": 7
+    }
+  ]
 }
