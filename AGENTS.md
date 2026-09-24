@@ -19,23 +19,23 @@ streamlit run app.py
 
 ```
 / (repo root — all code lives here)
-├── app.py                          # Streamlit entry point (Dev A)
+├── app.py                          # Streamlit entry point
 ├── ui/
-│   ├── components.py               # Phase 1 visual components (Dev A) — do not modify
-│   └── scenario_components.py      # Phase 2 visual components (Dev A) — to be created
+│   └── components.py               # All visual components — Phase 1 and Phase 2
 ├── ai/
-│   ├── gemini_client.py            # get_locations() → raw JSON str (Dev B) — do not modify
-│   ├── prompt_builder.py           # Phase 1 prompt (Dev B) — do not modify
-│   ├── scenario_client.py          # get_scenario() → raw JSON str (Dev B) — to be created
-│   └── scenario_prompt.py          # Phase 2 prompt (Dev B) — to be created
+│   ├── gemini_client.py            # get_locations() → raw JSON str
+│   ├── prompt_builder.py           # Phase 1 prompt
+│   └── scenario_client.py          # get_scenario() → raw JSON str
 ├── core/
-│   ├── models.py                   # Criterio, Ubicacion, RespuestaIA dataclasses (Dev C)
-│   ├── parser.py                   # parse_response(str) → List[dict] (Dev C) — do not modify
-│   └── scenario_parser.py          # parse_scenario(str) → dict (Dev C) — to be created
+│   ├── models.py                   # Criterio, Ubicacion, RespuestaIA dataclasses
+│   ├── parser.py                   # parse_response(str) → List[dict]
+│   └── scenario_parser.py          # parse_scenario(str) → dict
 ├── tests/                          # Mock data and test helpers — do not use in production
 │   ├── mock_client.py              # get_mock_locations() / get_mock_scenario() — drop-in replacements for AI calls
-│   ├── mock_ubicaciones.json       # 4 example zones for Tijuana (Phase 1 response shape)
+│   ├── mock_ubicaciones.json       # 5 example zones for Tijuana (Phase 1 response shape)
 │   └── mock_escenario.json         # Example financial scenario for Zona Río (Phase 2 response shape)
+├── fase2/
+│   └── AI_INSTRUCTIONS_ESCENARIO.md  # Prompt/instructions reference for Phase 2 scenario
 ├── requirements.txt
 ├── .env.example
 └── fases_plans/                    # Planning docs only — NO code here
@@ -51,7 +51,8 @@ streamlit run app.py
 - `core.scenario_parser.parse_scenario(raw) -> dict` — plain dict, not a dataclass.
 - `load_dotenv()` called only in `gemini_client.py` — `.env` path is `parents[1]` (repo root).
 - `scenario_client.py` must reuse `genai.configure` already done in `gemini_client.py`; do not re-configure.
-- Phase 1 files (`gemini_client.py`, `prompt_builder.py`, `components.py`, `models.py`, `parser.py`) must not be modified in Phase 2.
+- `parser.py` computes `nivel` from `puntaje` via `_nivel_from_puntaje()`; the AI never returns `nivel` in criteria objects.
+- `CRITERIOS_INVERTIDOS = {"costo_renta", "compatibilidad_capital"}` — for these two, high puntaje means low cost (good), so the level label and UI colour are inverted.
 
 ## Phase 2 session_state keys
 
