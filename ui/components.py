@@ -875,3 +875,326 @@ def render_deuda(escenario: dict, deuda: dict) -> None:
             f"⚠️ El pago mensual ({_fmt_moneda(pago_mensual)}) representa más del 40 % "
             "de la utilidad — nivel de deuda alto."
         )
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 9. render_madurez — curva de maduración del negocio con 3 escenarios
+# ──────────────────────────────────────────────────────────────────────────────
+
+import math as _math
+
+
+def _curva_params(meses_madurez: int, pct_mes1: float) -> float:
+    """
+    Deriva la tasa k de la curva logística exponencial:
+        ventas(t) = ventas_maduras × (1 - e^(-k·t))
+
+    Se calibra para que ventas(meses_madurez) == 95 % de ventas_maduras
+    y se verifica que ventas(1) ≈ pct_mes1 / 100 × ventas_maduras.
+
+    En la práctica usamos k resuelto de la condición del 95 %:
+        k = -ln(0.05) / meses_madurez
+    """
+    return _math.log(20.0) / meses_madurez  # ln(1/0.05) = ln(20)
+
+
+def _flujo_mensual(
+    t: int,
+    ventas_maduras: float,
+    costos_totales: float,
+    k: float,
+    pct_mes1: float,
+) -> tuple[float, float]:
+    """
+    Devuelve (ingresos_t, utilidad_t) para el mes t (1-based).
+
+    El factor de escala del mes 1 se fuerza a pct_mes1/100 ajustando
+    la amplitud de la curva de modo que ventas(1) coincida con el estimado
+    de la IA, en lugar de depender puramente de k.
+
+    Estrategia: usar la curva normal pero forzar que el valor en t=1
+    sea exactamente pct_mes1/100 × ventas_maduras, interpolando linealmente
+    entre pct_mes1 en t=1 y 95% en t=meses_madurez.  Para los meses
+    intermedios usamos la curva exponencial re-escalada.
+    """
+    raw = 1.0 - _math.exp(-k * t)          # curva pura [0, ~0.95]
+    raw_mes1 = 1.0 - _math.exp(-k)         # valor puro en t=1
+    raw_tmax = 1.0 - _math.exp(-k * (3.0 / k))  # ≈ 0.95
+
+    # Re-escalar para que raw_mes1 → pct_mes1/100 y raw_tmax → 0.95
+    p1 = pct_mes1 / 100.0
+    p_max = 0.95
+    if raw_tmax > raw_mes1:
+        factor = (raw - raw_mes1) / (raw_tmax - raw_mes1)
+        escala = p1 + (p_max - p1) * factor
+    else:
+        escala = p1
+
+    escala = max(0.0, min(1.0, escala))
+    ingresos_t = ventas_maduras * escala
+    utilidad_t = ingresos_t - costos_totales
+    return ingresos_t, utilidad_t
+
+
+# Factores de ajuste para cada escenario
+_ESCENARIO_FACTORES = {
+    "pesimista":  {"meses_factor": 1.5,  "pct_factor": 0.7},
+    "moderado":   {"meses_factor": 1.0,  "pct_factor": 1.0},
+    "optimista":  {"meses_factor": 0.65, "pct_factor": 1.4},
+}
+
+_ESCENARIO_META = {
+    "pesimista": {"label": "🔴 Pesimista",  "color": _COLOR_NEGATIVO,    "bg": "#fee2e2"},
+    "moderado":  {"label": "⚪ Moderado",   "color": "#64748b",           "bg": "var(--secondary-background-color)"},
+    "optimista": {"label": "🟢 Optimista",  "color": _COLOR_POSITIVO,    "bg": "#dcfce7"},
+}
+
+
+def render_madurez(escenario: dict) -> None:
+    """
+    Muestra la curva de maduración del negocio con tres escenarios seleccionables.
+
+    Calcula para cada escenario (pesimista / moderado / optimista):
+      - Una curva de ingresos vs costos mes a mes hasta la madurez + 6 meses buffer
+      - El mes de break-even real (primer mes con utilidad > 0)
+      - El capital consumido (quemado) antes del break-even
+      - La recuperación de inversión real sobre flujo acumulado
+
+    El escenario activo se guarda en st.session_state["escenario_madurez"].
+
+    Args:
+        escenario: dict validado por core.scenario_parser.parse_scenario().
+                   Requiere las claves: ingresos_estimados_mes, costos_fijos_mes,
+                   costos_variables_mes, capital, madurez.
+    """
+    st.subheader("📈 Curva de maduración del negocio")
+    st.caption(
+        "Estimación de cómo evolucionarán los ingresos desde la apertura hasta que el negocio "
+        "alcance ventas estabilizadas. Los tres escenarios reflejan distintas velocidades de adopción."
+    )
+
+    # ── Datos base ────────────────────────────────────────────────────────────
+    ventas_maduras = float(escenario.get("ingresos_estimados_mes", 0.0))
+    costos_totales = (
+        float(escenario.get("costos_fijos_mes", 0.0))
+        + float(escenario.get("costos_variables_mes", 0.0))
+    )
+    capital = float(escenario.get("capital", 0.0))
+    madurez = escenario.get("madurez", {})
+    base_meses = int(madurez.get("meses_hasta_madurez", 18))
+    base_pct   = float(madurez.get("porcentaje_ventas_mes1", 25.0))
+
+    # ── Selector de escenario ─────────────────────────────────────────────────
+    escenario_activo = st.session_state.get("escenario_madurez", "moderado")
+
+    btn_cols = st.columns(3)
+    for col, (key, meta) in zip(btn_cols, _ESCENARIO_META.items()):
+        with col:
+            is_active = escenario_activo == key
+            btn_style = (
+                f"background:{meta['bg']};border:2px solid {meta['color']};"
+                f"border-radius:10px;padding:10px 0;width:100%;font-weight:700;"
+                f"font-size:0.9rem;color:{meta['color']};cursor:pointer;"
+                + ("box-shadow:0 0 0 3px " + meta["color"] + "33;" if is_active else "")
+            )
+            # Usamos st.button nativo; el estilo de "seleccionado" se indica con type
+            btn_type = "primary" if is_active else "secondary"
+            if st.button(meta["label"], key=f"btn_madurez_{key}", use_container_width=True, type=btn_type):
+                st.session_state["escenario_madurez"] = key
+                st.rerun()
+
+    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+
+    # ── Calcular curva del escenario activo ───────────────────────────────────
+    factores = _ESCENARIO_FACTORES[escenario_activo]
+    meses_madurez = max(3, round(base_meses * factores["meses_factor"]))
+    pct_mes1      = min(90.0, max(5.0, base_pct * factores["pct_factor"]))
+
+    k = _curva_params(meses_madurez, pct_mes1)
+    n_meses = meses_madurez + 6   # buffer de 6 meses post-madurez
+
+    meses       = list(range(1, n_meses + 1))
+    ingresos_v  = []
+    utilidad_v  = []
+    for t in meses:
+        ing, util = _flujo_mensual(t, ventas_maduras, costos_totales, k, pct_mes1)
+        ingresos_v.append(ing)
+        utilidad_v.append(util)
+
+    costos_v = [costos_totales] * n_meses  # costos fijos + variables = constantes
+
+    # ── KPIs derivados ────────────────────────────────────────────────────────
+    # 1. Mes de break-even real
+    mes_breakeven = next((t for t, u in zip(meses, utilidad_v) if u >= 0), None)
+
+    # 2. Capital quemado antes del break-even
+    if mes_breakeven is not None:
+        meses_deficit = [u for u in utilidad_v[:mes_breakeven - 1] if u < 0]
+        capital_quemado = abs(sum(meses_deficit))
+    else:
+        capital_quemado = abs(sum(u for u in utilidad_v if u < 0))
+
+    # 3. Recuperación de inversión sobre flujo acumulado
+    flujo_acumulado = 0.0
+    mes_recuperacion = None
+    for t, u in zip(meses, utilidad_v):
+        flujo_acumulado += u
+        if flujo_acumulado >= capital and mes_recuperacion is None:
+            mes_recuperacion = t
+
+    # ── Gráfica Plotly ────────────────────────────────────────────────────────
+    fig = go.Figure()
+
+    # Área de costos (fondo rojo claro)
+    fig.add_trace(go.Scatter(
+        x=meses, y=costos_v,
+        mode="lines",
+        name="Costos totales",
+        line=dict(color=_COLOR_NEGATIVO, width=2, dash="dot"),
+        fill=None,
+    ))
+
+    # Curva de ingresos
+    fig.add_trace(go.Scatter(
+        x=meses, y=ingresos_v,
+        mode="lines",
+        name="Ingresos proyectados",
+        line=dict(color=_COLOR_NEUTRO, width=3),
+        fill="tonexty",
+        fillcolor="rgba(220,38,38,0.08)",  # zona roja: ingresos < costos
+    ))
+
+    # Línea de ingresos maduros (referencia)
+    fig.add_hline(
+        y=ventas_maduras,
+        line_dash="dot",
+        line_color="#94a3b8",
+        annotation_text=f"Ventas maduras: {_fmt_moneda(ventas_maduras)}/mes",
+        annotation_position="top left",
+        annotation_font_size=11,
+        annotation_font_color="#94a3b8",
+    )
+
+    # Línea vertical de break-even
+    if mes_breakeven is not None:
+        fig.add_vline(
+            x=mes_breakeven,
+            line_dash="dash",
+            line_color=_COLOR_POSITIVO,
+            annotation_text=f"Break-even: mes {mes_breakeven}",
+            annotation_position="top right",
+            annotation_font_size=11,
+            annotation_font_color=_COLOR_POSITIVO,
+        )
+
+    meta_activa = _ESCENARIO_META[escenario_activo]
+    fig.update_layout(
+        xaxis=dict(
+            title="Mes de operación",
+            tickmode="linear",
+            dtick=max(1, n_meses // 12),
+            gridcolor="rgba(128,128,128,0.15)",
+        ),
+        yaxis=dict(
+            title="MXN / mes",
+            tickformat="$,.0f",
+            gridcolor="rgba(128,128,128,0.15)",
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        height=360,
+        margin=dict(t=50, b=50, l=80, r=20),
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="-apple-system, 'Segoe UI', sans-serif"),
+        hoverlabel=dict(
+            bgcolor="#1e293b",
+            font_color="#f8fafc",
+            font_size=12,
+            bordercolor="#1e293b",
+        ),
+        hovermode="x unified",
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    # ── KPI cards ─────────────────────────────────────────────────────────────
+    k1, k2, k3 = st.columns(3)
+
+    with k1:
+        if mes_breakeven is not None:
+            be_color = _COLOR_POSITIVO if mes_breakeven <= 12 else (_COLOR_ADVERTENCIA if mes_breakeven <= 24 else _COLOR_NEGATIVO)
+            be_texto = f"Mes {mes_breakeven}"
+        else:
+            be_color = _COLOR_NEGATIVO
+            be_texto = "No alcanzado"
+        st.markdown(
+            _kpi_card(
+                "🎯", "Break-even real",
+                be_texto, be_color,
+                subtitulo="Primer mes con ingresos > costos",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with k2:
+        cq_color = _COLOR_NEGATIVO if capital_quemado > capital * 0.5 else _COLOR_ADVERTENCIA
+        alcanza = "⚠️ Capital insuficiente" if capital_quemado > capital else f"Cubre {capital_quemado/capital*100:.0f}% del capital"
+        st.markdown(
+            _kpi_card(
+                "🔥", "Capital en riesgo (rampa)",
+                _fmt_moneda(capital_quemado), cq_color,
+                subtitulo=alcanza,
+            ),
+            unsafe_allow_html=True,
+        )
+
+    with k3:
+        if mes_recuperacion is not None:
+            rec_color = _COLOR_POSITIVO if mes_recuperacion <= 24 else _COLOR_ADVERTENCIA
+            rec_texto = f"Mes {mes_recuperacion}"
+        else:
+            rec_color = _COLOR_NEGATIVO
+            rec_texto = "Fuera del horizonte"
+        st.markdown(
+            _kpi_card(
+                "💰", "Recuperación real de inversión",
+                rec_texto, rec_color,
+                subtitulo="Basada en flujo acumulado real, no el promedio estático",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    # ── Alerta narrativa ──────────────────────────────────────────────────────
+    st.markdown("<div style='margin-top:4px;'></div>", unsafe_allow_html=True)
+    if capital_quemado > capital:
+        st.error(
+            f"⚠️ En el escenario **{meta_activa['label']}**, el negocio necesita absorber "
+            f"**{_fmt_moneda(capital_quemado)}** antes de ser rentable, "
+            f"pero el capital disponible es solo **{_fmt_moneda(capital)}**. "
+            "Considera reducir costos, conseguir financiamiento adicional o revisar el precio."
+        )
+    elif mes_breakeven is None:
+        st.error(
+            "⚠️ En este escenario el negocio no alcanza el break-even dentro del horizonte proyectado."
+        )
+    elif mes_breakeven > 18:
+        st.warning(
+            f"⚠️ En el escenario **{meta_activa['label']}**, el negocio tardará **{mes_breakeven} meses** "
+            "en ser rentable. Asegúrate de tener reservas suficientes para ese período."
+        )
+    else:
+        st.success(
+            f"✅ En el escenario **{meta_activa['label']}**, el negocio alcanza el break-even en el "
+            f"**mes {mes_breakeven}** y recupera la inversión completa en el **mes {mes_recuperacion or '?'}**."
+        )
+
+    # ── Nota de supuestos ─────────────────────────────────────────────────────
+    st.markdown(
+        f'<div style="font-size:0.75rem;color:var(--text-color);opacity:0.45;margin-top:8px;">'
+        f'ⓘ Supuestos de maduración (escenario {escenario_activo}): '
+        f'{meses_madurez} meses hasta ventas estables · '
+        f'arranque en {pct_mes1:.0f}% de las ventas maduras · '
+        f'costos fijos desde el mes 1.'
+        f'</div>',
+        unsafe_allow_html=True,
+    )

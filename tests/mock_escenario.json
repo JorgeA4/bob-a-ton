@@ -21,6 +21,10 @@
   "meses_recuperacion_capital": 5.4,
   "precio_unitario_promedio": 60.0,
   "costo_variable_unitario": 22.0,
+  "madurez": {
+    "meses_hasta_madurez": 14,
+    "porcentaje_ventas_mes1": 30.0
+  },
   "foda": {
     "fortalezas": [
       "Alta demanda de café en zona de oficinas y centros comerciales",

@@ -68,24 +68,27 @@ streamlit run app.py
 | `ciudad` | `str` | City submitted in the form |
 | `zona_preferida` | `str` | Optional preferred zone submitted in the form |
 | `ubicacion_elegida` | `str` | Name of the location selected for Phase 2 |
-| `escenario` | `dict` | Parsed scenario from `parse_scenario()` — includes `foda` sub-dict |
+| `escenario` | `dict` | Parsed scenario from `parse_scenario()` — includes `madurez` and `foda` sub-dicts |
 | `modo_edicion_escenario` | `bool` | Toggle for inline edit mode in the P&L (replaces the old separate adjust panel) |
 | `mostrar_foda` | `bool` | Toggle for the FODA panel |
 | `mostrar_deuda` | `bool` | Toggle for the debt-financing panel |
+| `escenario_madurez` | `str` | Active maturity scenario: `"pesimista"`, `"moderado"`, or `"optimista"` (default `"moderado"`) |
 | `_moneda_form` | `str` | Currency selected in the form radio (`"MXN"` or `"USD"`); managed by Streamlit widget state |
 
 Notes:
 - `foda` and `deuda` are **not** standalone session_state keys. FODA data lives inside `escenario["foda"]`; debt inputs are built inline in `app.py` and passed directly to `render_deuda()`.
 - All Phase 2 toggle keys (`modo_edicion_escenario`, `mostrar_foda`, `mostrar_deuda`) are cleared whenever a new Phase 1 analysis is submitted or a new location is confirmed.
+- `escenario_madurez` persists between re-renders — it is NOT cleared on new analysis (the user's scenario selection is intentional). Clear it manually if needed.
 
 ## Phase 2 financial metrics (computed in frontend, no AI call)
 
-- Gemini returns `ingresos_estimados_mes`, `desglose_fijos` (list), `desglose_variables` (list), `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario`. `costos_fijos_mes` and `costos_variables_mes` are **computed by `parse_scenario()`** by summing the respective breakdown lists — Gemini never sends them.
+- Gemini returns `ingresos_estimados_mes`, `desglose_fijos` (list), `desglose_variables` (list), `utilidad_neta_mes`, `punto_equilibrio_unidades`, `meses_recuperacion_capital`, `precio_unitario_promedio`, `costo_variable_unitario`, `madurez` (object). `costos_fijos_mes` and `costos_variables_mes` are **computed by `parse_scenario()`** by summing the respective breakdown lists — Gemini never sends them.
 - The adjust panel is inline in `render_escenario()` (toggle via `modo_edicion_escenario` session state key); viability KPIs recalculate in real time with the edited values.
 - Pago deuda mensual = French amortisation formula (applied in `render_deuda()`).
 - Viability semaphore: 🔴 utilidad ≤ 0 · 🟡 recuperación > 24 meses · 🟢 recuperación ≤ 24 meses
+- Maturity curve (`render_madurez()`): exponential saturation `ventas(t) = ventas_maduras × (1 − e^(−k·t))`, re-scaled so `ventas(1) == porcentaje_ventas_mes1 %` and `ventas(meses_hasta_madurez) ≈ 95 %`. `k = ln(20) / meses_hasta_madurez`. Three scenarios apply multipliers to `meses_hasta_madurez` and `porcentaje_ventas_mes1` — the math is purely in the frontend; the AI only supplies the two base parameters.
 
-## Phase 2 scenario JSON schema (flat — returned by `get_scenario()`, validated by `parse_scenario()`)
+## Phase 2 scenario JSON schema (returned by `get_scenario()`, validated by `parse_scenario()`)
 
 ```json
 {
@@ -101,6 +104,10 @@ Notes:
   "meses_recuperacion_capital": "float | null",
   "precio_unitario_promedio": "float",
   "costo_variable_unitario": "float",
+  "madurez": {
+    "meses_hasta_madurez": "int (6–48)",
+    "porcentaje_ventas_mes1": "float (5–80)"
+  },
   "foda": {
     "fortalezas": ["str", "..."],
     "oportunidades": ["str", "..."],

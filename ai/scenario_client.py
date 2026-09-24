@@ -61,7 +61,8 @@ Instrucciones:
 4. En desglose_variables lista entre 3 y 6 conceptos de costos variables ESPECÍFICOS para {giro} (ej. granos de café, desechables, comisión de app de delivery). NO uses categorías genéricas como "otros".
 5. El código calculará los totales sumando los items — NO incluyas los campos costos_fijos_mes ni costos_variables_mes en el JSON.
 6. El FODA debe ser específico para el giro Y la ubicación — no genérico.
-7. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
+7. En el objeto "madurez" estima: cuántos meses tarda el negocio en alcanzar ventas estabilizadas (meses_hasta_madurez) y a qué porcentaje de las ventas maduras arrancaría en el mes 1 (porcentaje_ventas_mes1, entre 5 y 80). Basa el estimado en el tipo de negocio, la zona y el capital disponible — un café bien ubicado madura más rápido que un taller industrial.
+8. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
 
 Estructura JSON exacta (copia esta estructura, reemplaza los valores):
 {{
@@ -85,6 +86,10 @@ Estructura JSON exacta (copia esta estructura, reemplaza los valores):
   "meses_recuperacion_capital": 0.0,
   "precio_unitario_promedio": 0.0,
   "costo_variable_unitario": 0.0,
+  "madurez": {{
+    "meses_hasta_madurez": 0,
+    "porcentaje_ventas_mes1": 0.0
+  }},
   "foda": {{
     "fortalezas": ["fortaleza 1", "fortaleza 2", "fortaleza 3"],
     "oportunidades": ["oportunidad 1", "oportunidad 2", "oportunidad 3"],
@@ -99,6 +104,7 @@ Reglas de calidad:
 - utilidad_neta_mes = ingresos_estimados_mes − suma(desglose_fijos[].monto) − suma(desglose_variables[].monto).
 - meses_recuperacion_capital = capital / utilidad_neta_mes (null si utilidad ≤ 0).
 - punto_equilibrio_unidades = suma(desglose_fijos[].monto) / (precio_unitario_promedio − costo_variable_unitario).
+- madurez.meses_hasta_madurez: entero entre 6 y 48. madurez.porcentaje_ventas_mes1: float entre 5.0 y 80.0.
 - Incluye 3 o 4 elementos en cada lista del FODA.
 - JSON válido siempre: sin comas finales, sin comentarios, sin texto fuera del JSON.
 """

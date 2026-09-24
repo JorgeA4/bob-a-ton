@@ -30,8 +30,12 @@ _CLAVES_FODA = {"fortalezas", "oportunidades", "debilidades", "amenazas"}
 _CLAVE_DF = "desglose_fijos"
 _CLAVE_DV = "desglose_variables"
 
+# Madurez: objeto con dos claves numéricas
+_CLAVE_MADUREZ = "madurez"
+_CLAVES_MADUREZ = {"meses_hasta_madurez", "porcentaje_ventas_mes1"}
+
 # Todas las claves raíz requeridas
-_CLAVES_RAIZ = _CLAVES_NUMERICAS | _CLAVES_STRING | {_CLAVE_MRC, _CLAVE_FODA, _CLAVE_DF, _CLAVE_DV}
+_CLAVES_RAIZ = _CLAVES_NUMERICAS | _CLAVES_STRING | {_CLAVE_MRC, _CLAVE_FODA, _CLAVE_DF, _CLAVE_DV, _CLAVE_MADUREZ}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -175,7 +179,39 @@ def parse_scenario(json_str: str) -> dict:
     costos_fijos_mes    = sum(item["monto"] for item in desglose_fijos)
     costos_variables_mes = sum(item["monto"] for item in desglose_variables)
 
-    # 7. Validar y coercionar FODA
+    # 7. Parsear y validar madurez
+    madurez_raw = data[_CLAVE_MADUREZ]
+    if not isinstance(madurez_raw, dict):
+        raise ValueError(
+            f"El campo 'madurez' debe ser un objeto, se recibió: {type(madurez_raw).__name__}"
+        )
+    _validar_claves(madurez_raw, _CLAVES_MADUREZ, "madurez")
+    try:
+        meses_hasta_madurez = int(madurez_raw["meses_hasta_madurez"])
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"madurez.meses_hasta_madurez debe ser entero, "
+            f"se recibió: {madurez_raw['meses_hasta_madurez']!r}"
+        )
+    try:
+        porcentaje_mes1 = float(madurez_raw["porcentaje_ventas_mes1"])
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"madurez.porcentaje_ventas_mes1 debe ser numérico, "
+            f"se recibió: {madurez_raw['porcentaje_ventas_mes1']!r}"
+        )
+    if not (1 <= meses_hasta_madurez <= 120):
+        raise ValueError(
+            f"madurez.meses_hasta_madurez debe estar entre 1 y 120, "
+            f"se recibió: {meses_hasta_madurez}"
+        )
+    if not (1.0 <= porcentaje_mes1 <= 100.0):
+        raise ValueError(
+            f"madurez.porcentaje_ventas_mes1 debe estar entre 1 y 100, "
+            f"se recibió: {porcentaje_mes1}"
+        )
+
+    # 8. Validar y coercionar FODA
     foda_raw = data[_CLAVE_FODA]
     if not isinstance(foda_raw, dict):
         raise ValueError(
@@ -192,7 +228,7 @@ def parse_scenario(json_str: str) -> dict:
             )
         foda[categoria] = [str(item) for item in items if str(item).strip()]
 
-    # 8. Ensamblar el dict de salida
+    # 9. Ensamblar el dict de salida
     return {
         **strings,
         **numericos,
@@ -201,5 +237,9 @@ def parse_scenario(json_str: str) -> dict:
         _CLAVE_MRC:             meses_recuperacion,
         _CLAVE_DF:              desglose_fijos,
         _CLAVE_DV:              desglose_variables,
+        _CLAVE_MADUREZ: {
+            "meses_hasta_madurez":    meses_hasta_madurez,
+            "porcentaje_ventas_mes1": porcentaje_mes1,
+        },
         _CLAVE_FODA:            foda,
     }

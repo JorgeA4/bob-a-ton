@@ -14,6 +14,7 @@ from ui.components import (
     render_escenario,
     render_foda,
     render_deuda,
+    render_madurez,
 )
 
 # Fase 2 — imports de scenario (no afectan Fase 1 si el módulo existe)
@@ -414,6 +415,10 @@ if "ubicaciones" in st.session_state:
         # render_escenario devuelve los valores activos (base o ajustados)
         # para que render_deuda use los mismos números que ve el usuario
         _escenario_activo = render_escenario(_escenario, modo_edicion=_modo_edicion)
+
+        # ── Curva de maduración ───────────────────────────────────────────────
+        st.markdown("<hr>", unsafe_allow_html=True)
+        render_madurez(_escenario)
 
         # ── Botón: FODA ───────────────────────────────────────────────────────
         st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
