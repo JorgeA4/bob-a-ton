@@ -112,7 +112,7 @@ def get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str:
     """
     _ensure_configured()
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    model = genai.GenerativeModel("gemini-3.6-flash")
     prompt = _build_scenario_prompt(giro, capital, ciudad, ubicacion)
 
     try:
