@@ -223,26 +223,7 @@ with form_col:
         submitted = st.form_submit_button("🔍 Analizar ubicaciones", use_container_width=True)
 
 with img_col:
-    st.markdown(
-        """
-        <div style="
-            height:220px;
-            background:var(--secondary-background-color);
-            border:2px dashed rgba(59,130,246,0.5);
-            border-radius:16px;
-            display:flex;
-            flex-direction:column;
-            align-items:center;
-            justify-content:center;
-            gap:10px;
-            color:#3b82f6;
-        ">
-            <span style="font-size:3rem;">🗺️</span>
-            <span style="font-weight:600;font-size:0.95rem;color:var(--text-color);">Imagen orientativa</span>
-            <span style="font-size:0.8rem;color:var(--text-color);opacity:0.5;">placeholder</span>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    st.image(r"ui\images\w_image.png", None, width=720, clamp=False, channels="RGB", output_format="auto", use_container_width=None, link=None
     )
 
 # ── TEST — Botón de datos de ejemplo (quitar bloque completo cuando no se use)
