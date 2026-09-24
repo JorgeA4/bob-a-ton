@@ -57,13 +57,11 @@ Datos del negocio:
 Instrucciones:
 1. Estima ingresos, costos y métricas de rentabilidad para el PRIMER AÑO de operación en esa ubicación.
 2. Todos los valores monetarios en MXN/mes, como números float sin símbolos de moneda.
-3. Calcula utilidad_neta_mes = ingresos_estimados_mes - costos_fijos_mes - costos_variables_mes.
-4. Calcula meses_recuperacion_capital = capital / utilidad_neta_mes (null si utilidad <= 0).
-5. Calcula punto_equilibrio_unidades = costos_fijos_mes / (precio_unitario_promedio - costo_variable_unitario).
-6. Desglosa costos_fijos_mes en desglose_fijos: renta + nomina + servicios + otros_fijos (deben sumar costos_fijos_mes).
-7. Desglosa costos_variables_mes en desglose_variables: insumos + comisiones + empaque + otros_variables (deben sumar costos_variables_mes).
-8. El FODA debe ser específico para el giro Y la ubicación — no genérico.
-9. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
+3. En desglose_fijos lista entre 3 y 6 conceptos de costos fijos ESPECÍFICOS para {giro} (ej. licencia sanitaria, seguro del local, servicio de música). NO uses categorías genéricas como "otros".
+4. En desglose_variables lista entre 3 y 6 conceptos de costos variables ESPECÍFICOS para {giro} (ej. granos de café, desechables, comisión de app de delivery). NO uses categorías genéricas como "otros".
+5. El código calculará los totales sumando los items — NO incluyas los campos costos_fijos_mes ni costos_variables_mes en el JSON.
+6. El FODA debe ser específico para el giro Y la ubicación — no genérico.
+7. Responde ÚNICA Y EXCLUSIVAMENTE con el JSON. Sin bloques markdown, sin texto antes, sin texto después.
 
 Estructura JSON exacta (copia esta estructura, reemplaza los valores):
 {{
@@ -72,20 +70,16 @@ Estructura JSON exacta (copia esta estructura, reemplaza los valores):
   "ciudad": "{ciudad}",
   "ubicacion": "{ubicacion}",
   "ingresos_estimados_mes": 0.0,
-  "costos_fijos_mes": 0.0,
-  "desglose_fijos": {{
-    "renta": 0.0,
-    "nomina": 0.0,
-    "servicios": 0.0,
-    "otros_fijos": 0.0
-  }},
-  "costos_variables_mes": 0.0,
-  "desglose_variables": {{
-    "insumos": 0.0,
-    "comisiones": 0.0,
-    "empaque": 0.0,
-    "otros_variables": 0.0
-  }},
+  "desglose_fijos": [
+    {{"concepto": "Nombre del costo fijo 1", "monto": 0.0}},
+    {{"concepto": "Nombre del costo fijo 2", "monto": 0.0}},
+    {{"concepto": "Nombre del costo fijo 3", "monto": 0.0}}
+  ],
+  "desglose_variables": [
+    {{"concepto": "Nombre del costo variable 1", "monto": 0.0}},
+    {{"concepto": "Nombre del costo variable 2", "monto": 0.0}},
+    {{"concepto": "Nombre del costo variable 3", "monto": 0.0}}
+  ],
   "utilidad_neta_mes": 0.0,
   "punto_equilibrio_unidades": 0.0,
   "meses_recuperacion_capital": 0.0,
@@ -101,8 +95,10 @@ Estructura JSON exacta (copia esta estructura, reemplaza los valores):
 
 Reglas de calidad:
 - Los valores deben ser realistas para {giro} en {ubicacion}, {ciudad}.
-- Los valores de desglose_fijos deben sumar exactamente costos_fijos_mes.
-- Los valores de desglose_variables deben sumar exactamente costos_variables_mes.
+- Cada concepto en desglose_fijos y desglose_variables debe ser específico al giro — evita términos genéricos.
+- utilidad_neta_mes = ingresos_estimados_mes − suma(desglose_fijos[].monto) − suma(desglose_variables[].monto).
+- meses_recuperacion_capital = capital / utilidad_neta_mes (null si utilidad ≤ 0).
+- punto_equilibrio_unidades = suma(desglose_fijos[].monto) / (precio_unitario_promedio − costo_variable_unitario).
 - Incluye 3 o 4 elementos en cada lista del FODA.
 - JSON válido siempre: sin comas finales, sin comentarios, sin texto fuera del JSON.
 """

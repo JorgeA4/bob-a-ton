@@ -4,22 +4,20 @@
   "ubicacion": "Zona Río",
   "capital": 150000.0,
   "ingresos_estimados_mes": 78000.0,
-  "costos_fijos_mes": 28000.0,
-  "desglose_fijos": {
-    "renta": 14000.0,
-    "nomina": 9000.0,
-    "servicios": 3000.0,
-    "otros_fijos": 2000.0
-  },
-  "costos_variables_mes": 22000.0,
-  "desglose_variables": {
-    "insumos": 14000.0,
-    "comisiones": 2000.0,
-    "empaque": 3500.0,
-    "otros_variables": 2500.0
-  },
+  "desglose_fijos": [
+    {"concepto": "Renta del local", "monto": 14000.0},
+    {"concepto": "Nómina (barista + cajero)", "monto": 9000.0},
+    {"concepto": "Servicios (agua, luz, internet)", "monto": 3000.0},
+    {"concepto": "Contabilidad y licencias", "monto": 2000.0}
+  ],
+  "desglose_variables": [
+    {"concepto": "Granos de café e insumos de barra", "monto": 14000.0},
+    {"concepto": "Empaque y desechables", "monto": 3500.0},
+    {"concepto": "Comisión app de delivery", "monto": 2000.0},
+    {"concepto": "Reposición de alimentos y snacks", "monto": 2500.0}
+  ],
   "utilidad_neta_mes": 28000.0,
-  "punto_equilibrio_unidades": 467.0,
+  "punto_equilibrio_unidades": 737.0,
   "meses_recuperacion_capital": 5.4,
   "precio_unitario_promedio": 60.0,
   "costo_variable_unitario": 22.0,

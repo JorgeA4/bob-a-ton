@@ -386,21 +386,6 @@ def _fmt_meses(valor: float | None) -> str:
 # 5. render_escenario — informe financiero vertical (P&L → viabilidad → supuestos)
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Labels para los desgloses de costos
-_LABELS_FIJOS = {
-    "renta":       "Renta",
-    "nomina":      "Nómina",
-    "servicios":   "Servicios",
-    "otros_fijos": "Otros fijos",
-}
-_LABELS_VARIABLES = {
-    "insumos":          "Insumos",
-    "comisiones":       "Comisiones",
-    "empaque":          "Empaque",
-    "otros_variables":  "Otros variables",
-}
-
-
 def _pl_row(label: str, valor: str, color: str, indent: int = 0,
             is_total: bool = False, help_text: str = "") -> str:
     """Genera una fila HTML del estado de resultados."""
@@ -435,13 +420,11 @@ def _pl_row(label: str, valor: str, color: str, indent: int = 0,
     )
 
 
-def _pl_desglose(items: dict, labels: dict) -> str:
-    """Genera filas de desglose indentadas para costos fijos o variables."""
+def _pl_desglose(items: list) -> str:
+    """Genera filas de desglose indentadas a partir de lista [{concepto, monto}]."""
     html = ""
-    for key, label in labels.items():
-        val = items.get(key)
-        if val is not None:
-            html += _pl_row(label, _fmt_moneda(val), "var(--text-color)", indent=2)
+    for item in items:
+        html += _pl_row(item["concepto"], _fmt_moneda(item["monto"]), "var(--text-color)", indent=2)
     return html
 
 
@@ -613,13 +596,13 @@ def render_escenario(escenario: dict, modo_edicion: bool = False) -> dict:
                 help_text="Gastos fijos mensuales que se pagan independientemente de cuánto vendas: renta, nómina base, servicios.",
             )
             if df:
-                rows_html += _pl_desglose(df, _LABELS_FIJOS)
+                rows_html += _pl_desglose(df)
             rows_html += _pl_row(
                 "Costos variables", _fmt_moneda(variables), "var(--text-color)", indent=1,
                 help_text="Gastos que crecen con el volumen de ventas: materia prima, insumos, comisiones.",
             )
             if dv:
-                rows_html += _pl_desglose(dv, _LABELS_VARIABLES)
+                rows_html += _pl_desglose(dv)
 
             color_utilidad = _COLOR_POSITIVO if utilidad >= 0 else _COLOR_NEGATIVO
             rows_html += _pl_row(

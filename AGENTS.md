@@ -94,8 +94,8 @@ Notes:
   "ciudad": "str",
   "ubicacion": "str",
   "ingresos_estimados_mes": "float",
-  "costos_fijos_mes": "float",
-  "costos_variables_mes": "float",
+  "desglose_fijos": [{"concepto": "str", "monto": "float"}, "..."],
+  "desglose_variables": [{"concepto": "str", "monto": "float"}, "..."],
   "utilidad_neta_mes": "float",
   "punto_equilibrio_unidades": "float",
   "meses_recuperacion_capital": "float | null",
@@ -109,6 +109,8 @@ Notes:
   }
 }
 ```
+
+`costos_fijos_mes` y `costos_variables_mes` **no los devuelve Gemini** — `parse_scenario()` los calcula sumando los montos del desglose correspondiente y los añade al dict resultado. Los consumidores (`render_escenario`, `render_deuda`) los reciben normalmente.
 
 ## Code style
 

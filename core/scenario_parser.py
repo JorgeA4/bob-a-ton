@@ -4,12 +4,12 @@ import json
 # Claves requeridas según el esquema real de ai/scenario_client.py
 # ──────────────────────────────────────────────────────────────────────────────
 
-# Claves raíz obligatorias cuyo valor debe ser numérico (float)
+# Claves raíz obligatorias cuyo valor debe ser numérico (float).
+# costos_fijos_mes y costos_variables_mes se calculan aquí sumando los desgloses
+# — Gemini ya no los devuelve directamente.
 _CLAVES_NUMERICAS = {
     "capital",
     "ingresos_estimados_mes",
-    "costos_fijos_mes",
-    "costos_variables_mes",
     "utilidad_neta_mes",
     "punto_equilibrio_unidades",
     "precio_unitario_promedio",
@@ -26,16 +26,16 @@ _CLAVE_MRC = "meses_recuperacion_capital"
 _CLAVE_FODA = "foda"
 _CLAVES_FODA = {"fortalezas", "oportunidades", "debilidades", "amenazas"}
 
-# Todas las claves raíz requeridas
-_CLAVES_RAIZ = _CLAVES_NUMERICAS | _CLAVES_STRING | {_CLAVE_MRC, _CLAVE_FODA}
+# Desgloses: listas de objetos {concepto, monto} — obligatorios
+_CLAVE_DF = "desglose_fijos"
+_CLAVE_DV = "desglose_variables"
 
-# Desgloses opcionales: subclaves esperadas dentro de cada sección
-_CLAVES_DESGLOSE_FIJOS     = {"renta", "nomina", "servicios", "otros_fijos"}
-_CLAVES_DESGLOSE_VARIABLES = {"insumos", "comisiones", "empaque", "otros_variables"}
+# Todas las claves raíz requeridas
+_CLAVES_RAIZ = _CLAVES_NUMERICAS | _CLAVES_STRING | {_CLAVE_MRC, _CLAVE_FODA, _CLAVE_DF, _CLAVE_DV}
 
 
 # ──────────────────────────────────────────────────────────────────────────────
-# Helper interno
+# Helpers internos
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _validar_claves(d: dict, claves_requeridas: set, contexto: str) -> None:
@@ -47,6 +47,51 @@ def _validar_claves(d: dict, claves_requeridas: set, contexto: str) -> None:
         )
 
 
+def _parsear_desglose(raw: object, nombre: str) -> list[dict]:
+    """
+    Parsea y valida una lista de items {concepto, monto}.
+
+    Args:
+        raw: valor crudo del campo (debe ser una lista de dicts).
+        nombre: nombre del campo para mensajes de error.
+
+    Returns:
+        Lista de dicts con claves 'concepto' (str) y 'monto' (float),
+        sin items con monto 0 o concepto vacío.
+
+    Raises:
+        ValueError: si el formato es incorrecto o la lista está vacía.
+    """
+    if not isinstance(raw, list):
+        raise ValueError(
+            f"'{nombre}' debe ser una lista, se recibió: {type(raw).__name__}"
+        )
+    if len(raw) == 0:
+        raise ValueError(f"'{nombre}' no puede ser una lista vacía")
+
+    result = []
+    for i, item in enumerate(raw):
+        ctx = f"{nombre}[{i}]"
+        if not isinstance(item, dict):
+            raise ValueError(f"{ctx} debe ser un objeto, se recibió: {type(item).__name__}")
+        if "concepto" not in item:
+            raise ValueError(f"Falta 'concepto' en {ctx}")
+        if "monto" not in item:
+            raise ValueError(f"Falta 'monto' en {ctx}")
+        concepto = str(item["concepto"]).strip()
+        if not concepto:
+            raise ValueError(f"'concepto' está vacío en {ctx}")
+        try:
+            monto = float(item["monto"])
+        except (TypeError, ValueError):
+            raise ValueError(
+                f"'monto' en {ctx} debe ser numérico, se recibió: {item['monto']!r}"
+            )
+        result.append({"concepto": concepto, "monto": monto})
+
+    return result
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # Función pública
 # ──────────────────────────────────────────────────────────────────────────────
@@ -56,13 +101,17 @@ def parse_scenario(json_str: str) -> dict:
     Convierte el JSON crudo devuelto por get_scenario() en un dict validado
     y con tipos coercionados, listo para consumir en ui/components.py.
 
-    El esquema esperado (plano) es el que devuelve ai/scenario_client.py:
-        giro, ciudad, ubicacion, capital,
-        ingresos_estimados_mes, costos_fijos_mes, costos_variables_mes,
+    Esquema de entrada (Gemini):
+        giro, capital, ciudad, ubicacion, ingresos_estimados_mes,
+        desglose_fijos: [{concepto, monto}, ...],
+        desglose_variables: [{concepto, monto}, ...],
         utilidad_neta_mes, punto_equilibrio_unidades,
         meses_recuperacion_capital (float o null),
         precio_unitario_promedio, costo_variable_unitario,
         foda: {fortalezas, oportunidades, debilidades, amenazas}
+
+    costos_fijos_mes y costos_variables_mes NO vienen de Gemini — se calculan
+    aquí sumando los items del desglose correspondiente.
 
     Args:
         json_str: String JSON crudo tal como lo devuelve
@@ -72,11 +121,12 @@ def parse_scenario(json_str: str) -> dict:
         dict con todos los campos del esquema, tipos coercionados:
         - Numéricos → float  (meses_recuperacion_capital puede ser None)
         - Strings → str
-        - foda → dict con listas de str (elementos vacíos descartados)
+        - costos_fijos_mes / costos_variables_mes → float calculado
+        - desglose_fijos / desglose_variables → list[dict] con concepto+monto
+        - foda → dict con listas de str
 
     Raises:
-        ValueError: Si json_str no es JSON válido o faltan campos requeridos
-                    en cualquier nivel.
+        ValueError: Si json_str no es JSON válido o faltan campos requeridos.
     """
     # 1. Parsear el string JSON
     try:
@@ -118,7 +168,14 @@ def parse_scenario(json_str: str) -> dict:
     # 5. Coercionar claves string
     strings = {clave: str(data[clave]) for clave in _CLAVES_STRING}
 
-    # 6. Validar y coercionar FODA
+    # 6. Parsear desgloses libres y calcular totales
+    desglose_fijos    = _parsear_desglose(data[_CLAVE_DF], _CLAVE_DF)
+    desglose_variables = _parsear_desglose(data[_CLAVE_DV], _CLAVE_DV)
+
+    costos_fijos_mes    = sum(item["monto"] for item in desglose_fijos)
+    costos_variables_mes = sum(item["monto"] for item in desglose_variables)
+
+    # 7. Validar y coercionar FODA
     foda_raw = data[_CLAVE_FODA]
     if not isinstance(foda_raw, dict):
         raise ValueError(
@@ -133,37 +190,16 @@ def parse_scenario(json_str: str) -> dict:
                 f"foda.{categoria} debe ser una lista, "
                 f"se recibió: {type(items).__name__}"
             )
-        # Coercionar cada elemento a str; descartar elementos vacíos
         foda[categoria] = [str(item) for item in items if str(item).strip()]
 
-    # 7. Desgloses opcionales — si no están presentes se omiten del resultado
-    desglose_fijos: dict | None = None
-    if "desglose_fijos" in data and isinstance(data["desglose_fijos"], dict):
-        raw_df = data["desglose_fijos"]
-        desglose_fijos = {
-            k: float(raw_df[k])
-            for k in _CLAVES_DESGLOSE_FIJOS
-            if k in raw_df
-        }
-
-    desglose_variables: dict | None = None
-    if "desglose_variables" in data and isinstance(data["desglose_variables"], dict):
-        raw_dv = data["desglose_variables"]
-        desglose_variables = {
-            k: float(raw_dv[k])
-            for k in _CLAVES_DESGLOSE_VARIABLES
-            if k in raw_dv
-        }
-
-    # 8. Ensamblar el dict de salida con solo las claves conocidas
-    result = {
+    # 8. Ensamblar el dict de salida
+    return {
         **strings,
         **numericos,
-        _CLAVE_MRC: meses_recuperacion,
-        _CLAVE_FODA: foda,
+        "costos_fijos_mes":     costos_fijos_mes,
+        "costos_variables_mes": costos_variables_mes,
+        _CLAVE_MRC:             meses_recuperacion,
+        _CLAVE_DF:              desglose_fijos,
+        _CLAVE_DV:              desglose_variables,
+        _CLAVE_FODA:            foda,
     }
-    if desglose_fijos is not None:
-        result["desglose_fijos"] = desglose_fijos
-    if desglose_variables is not None:
-        result["desglose_variables"] = desglose_variables
-    return result

@@ -23,20 +23,16 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "ciudad": "string",
   "ubicacion": "string",
   "ingresos_estimados_mes": 45000.0,
-  "costos_fijos_mes": 18000.0,
-  "desglose_fijos": {
-    "renta": 8000.0,
-    "nomina": 6000.0,
-    "servicios": 2000.0,
-    "otros_fijos": 2000.0
-  },
-  "costos_variables_mes": 9000.0,
-  "desglose_variables": {
-    "insumos": 5000.0,
-    "comisiones": 1000.0,
-    "empaque": 1500.0,
-    "otros_variables": 1500.0
-  },
+  "desglose_fijos": [
+    {"concepto": "Nombre específico del costo fijo 1", "monto": 8000.0},
+    {"concepto": "Nombre específico del costo fijo 2", "monto": 6000.0},
+    {"concepto": "Nombre específico del costo fijo 3", "monto": 4000.0}
+  ],
+  "desglose_variables": [
+    {"concepto": "Nombre específico del costo variable 1", "monto": 5000.0},
+    {"concepto": "Nombre específico del costo variable 2", "monto": 2500.0},
+    {"concepto": "Nombre específico del costo variable 3", "monto": 1500.0}
+  ],
   "utilidad_neta_mes": 18000.0,
   "punto_equilibrio_unidades": 120.0,
   "meses_recuperacion_capital": 6.0,
@@ -51,6 +47,10 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 }
 ```
 
+> **Nota**: `costos_fijos_mes` y `costos_variables_mes` **no aparecen en el JSON de Gemini**.
+> El parser los calcula sumando los montos de `desglose_fijos` y `desglose_variables` respectivamente,
+> eliminando cualquier posibilidad de inconsistencia entre el total y el desglose.
+
 ---
 
 ## Descripción de cada campo
@@ -62,19 +62,15 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 | `ciudad` | string | Ciudad (echo del input) |
 | `ubicacion` | string | Nombre de la ubicación elegida (echo del input) |
 | `ingresos_estimados_mes` | float | Ingresos brutos estimados en el primer año de operación normal (MXN/mes) |
-| `costos_fijos_mes` | float | Total de costos fijos del mes — debe igualar la suma del desglose (MXN/mes) |
-| `desglose_fijos.renta` | float | Renta del local (MXN/mes) |
-| `desglose_fijos.nomina` | float | Nómina base de empleados fijos (MXN/mes) |
-| `desglose_fijos.servicios` | float | Agua, luz, internet, gas, etc. (MXN/mes) |
-| `desglose_fijos.otros_fijos` | float | Seguros, mantenimiento, contabilidad y otros fijos (MXN/mes) |
-| `costos_variables_mes` | float | Total de costos variables del mes — debe igualar la suma del desglose (MXN/mes) |
-| `desglose_variables.insumos` | float | Materia prima e insumos directos proporcionales a ventas (MXN/mes) |
-| `desglose_variables.comisiones` | float | Comisiones por venta, plataformas de entrega, etc. (MXN/mes) |
-| `desglose_variables.empaque` | float | Empaques, bolsas, desechables proporcionales a ventas (MXN/mes) |
-| `desglose_variables.otros_variables` | float | Otros costos que varían con el volumen de ventas (MXN/mes) |
-| `utilidad_neta_mes` | float | `ingresos_estimados_mes - costos_fijos_mes - costos_variables_mes` |
-| `punto_equilibrio_unidades` | float | Unidades/servicios mínimos para cubrir costos totales al mes |
-| `meses_recuperacion_capital` | float | `capital / utilidad_neta_mes` (redondeado a 1 decimal) |
+| `desglose_fijos` | list | Lista de 3–6 objetos `{concepto, monto}` con costos fijos **específicos al giro** |
+| `desglose_fijos[].concepto` | string | Nombre descriptivo del costo fijo (ej. "Renta del local", "Nómina barista + cajero") |
+| `desglose_fijos[].monto` | float | Monto mensual del costo fijo en MXN |
+| `desglose_variables` | list | Lista de 3–6 objetos `{concepto, monto}` con costos variables **específicos al giro** |
+| `desglose_variables[].concepto` | string | Nombre descriptivo del costo variable (ej. "Granos de café", "Comisión app delivery") |
+| `desglose_variables[].monto` | float | Monto mensual del costo variable en MXN |
+| `utilidad_neta_mes` | float | `ingresos_estimados_mes − sum(desglose_fijos) − sum(desglose_variables)` |
+| `punto_equilibrio_unidades` | float | `sum(desglose_fijos) / (precio_unitario_promedio − costo_variable_unitario)` |
+| `meses_recuperacion_capital` | float\|null | `capital / utilidad_neta_mes` (null si utilidad ≤ 0) |
 | `precio_unitario_promedio` | float | Precio de venta promedio por unidad/servicio (MXN) |
 | `costo_variable_unitario` | float | Costo variable por unidad/servicio (MXN) |
 | `foda.fortalezas` | list[string] | 3–4 fortalezas internas del negocio en esa ubicación |
@@ -86,11 +82,10 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
 
 ## Reglas de consistencia
 
-- `utilidad_neta_mes` debe ser exactamente `ingresos_estimados_mes - costos_fijos_mes - costos_variables_mes`.
-- `meses_recuperacion_capital` debe ser `capital / utilidad_neta_mes` (si utilidad ≤ 0, devolver `null`).
-- `punto_equilibrio_unidades` = `costos_fijos_mes / (precio_unitario_promedio - costo_variable_unitario)`.
-- `desglose_fijos.renta + nomina + servicios + otros_fijos` debe igualar `costos_fijos_mes`.
-- `desglose_variables.insumos + comisiones + empaque + otros_variables` debe igualar `costos_variables_mes`.
+- `utilidad_neta_mes` = `ingresos_estimados_mes − sum(desglose_fijos[].monto) − sum(desglose_variables[].monto)`.
+- `meses_recuperacion_capital` = `capital / utilidad_neta_mes` (si utilidad ≤ 0, devolver `null`).
+- `punto_equilibrio_unidades` = `sum(desglose_fijos[].monto) / (precio_unitario_promedio − costo_variable_unitario)`.
+- Los conceptos de desglose deben ser **específicos al giro** — no usar términos genéricos como "otros" o "misceláneos".
 - Todos los valores monetarios en MXN, sin símbolos de moneda, como `float` puro.
 - Responder **solo con JSON bare** — sin bloques ```json```, sin texto previo, sin texto posterior.
 - JSON válido siempre: sin comas finales, sin comentarios.
@@ -108,22 +103,20 @@ get_scenario(giro: str, capital: float, ciudad: str, ubicacion: str) -> str
   "ciudad": "CDMX",
   "ubicacion": "Condesa",
   "ingresos_estimados_mes": 52000.0,
-  "costos_fijos_mes": 21000.0,
-  "desglose_fijos": {
-    "renta": 10000.0,
-    "nomina": 7000.0,
-    "servicios": 2500.0,
-    "otros_fijos": 1500.0
-  },
-  "costos_variables_mes": 11000.0,
-  "desglose_variables": {
-    "insumos": 7000.0,
-    "comisiones": 1000.0,
-    "empaque": 1500.0,
-    "otros_variables": 1500.0
-  },
+  "desglose_fijos": [
+    {"concepto": "Renta del local", "monto": 10000.0},
+    {"concepto": "Nómina (barista + cajero)", "monto": 7000.0},
+    {"concepto": "Servicios (agua, luz, internet)", "monto": 2500.0},
+    {"concepto": "Contabilidad y licencia sanitaria", "monto": 1500.0}
+  ],
+  "desglose_variables": [
+    {"concepto": "Granos de café e insumos de barra", "monto": 7000.0},
+    {"concepto": "Empaque y desechables", "monto": 1500.0},
+    {"concepto": "Comisión plataforma delivery", "monto": 1000.0},
+    {"concepto": "Reposición de alimentos y snacks", "monto": 1500.0}
+  ],
   "utilidad_neta_mes": 20000.0,
-  "punto_equilibrio_unidades": 233.0,
+  "punto_equilibrio_unidades": 369.0,
   "meses_recuperacion_capital": 6.0,
   "precio_unitario_promedio": 90.0,
   "costo_variable_unitario": 38.0,
