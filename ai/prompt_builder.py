@@ -45,7 +45,7 @@ Los 9 criterios (claves JSON exactas):
 - seguridad_zona: nivel de seguridad percibida y real (10 = muy segura)
 - potencial_crecimiento: si la zona está en expansión o declive (10 = alto potencial)
 - visibilidad_local: exposición del local hacia la calle o zonas de alto tráfico (10 = máxima visibilidad)
-- compatibilidad_capital: si el capital cubre renta, instalación y 3 meses de operación (10 = muy holgado)
+- compatibilidad_capital: capital requerido para abrir en esa zona vs el capital disponible (10 = zona muy barata de arrancar, el capital sobra; 1 = zona requiere mucho más capital del disponible)
 
 Estructura exacta del JSON a devolver:
 {{

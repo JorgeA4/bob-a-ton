@@ -84,14 +84,24 @@ def _score_badge(total: int, color: str) -> str:
 # 1. Leyenda de simbología
 # ──────────────────────────────────────────────────────────────────────────────
 
+# Leyenda semántica: describe qué significa cada color para el negocio,
+# independientemente de si el criterio es normal o invertido.
+_LEYENDA_ITEMS = [
+    {"emoji": "🟢", "color": "#16a34a", "bg": "#dcfce7", "label": "Óptimo"},
+    {"emoji": "🔵", "color": "#2563eb", "bg": "#dbeafe", "label": "Aceptable"},
+    {"emoji": "🟡", "color": "#d97706", "bg": "#fef9c3", "label": "Regular"},
+    {"emoji": "🔴", "color": "#dc2626", "bg": "#fee2e2", "label": "Deficiente"},
+]
+
+
 def _render_leyenda() -> None:
-    """Leyenda visual que explica los colores de nivel."""
+    """Leyenda visual que explica los colores por bondad para el negocio."""
     items_html = "".join(
         f'<span style="display:inline-flex;align-items:center;gap:5px;'
         f'background:{m["bg"]};color:{m["color"]};border:1px solid {m["color"]}44;'
         f'border-radius:20px;padding:4px 12px;font-size:0.78rem;font-weight:600;">'
         f'{m["emoji"]} {m["label"]}</span>'
-        for m in NIVEL_META.values()
+        for m in _LEYENDA_ITEMS
     )
     # Nivel "sin datos"
     items_html += (
